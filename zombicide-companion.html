@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Zombicide Companion</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --bg:#12100e; --panel:#1e1a17; --panel2:#28221e; --border:#3a322b;
+  --text:#e8e0d5; --dim:#9a8f80; --accent:#c0392b; --accent2:#e74c3c;
+  --blue:#3498db; --yellow:#f1c40f; --orange:#e67e22; --red:#e74c3c; --green:#27ae60;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+body{margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; padding-bottom:76px;}
+header{padding:14px 16px 10px; text-align:center; border-bottom:2px solid var(--accent);}
+header h1{margin:0; font-size:1.35rem; letter-spacing:2px; text-transform:uppercase; color:var(--accent2); font-weight:900;}
+header .sub{font-size:.72rem; color:var(--dim); margin-top:2px;}
+.screen{display:none; padding:14px; max-width:640px; margin:0 auto;}
+.screen.active{display:block;}
+nav{position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--panel); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); z-index:50;}
+nav button{flex:1; background:none; border:none; color:var(--dim); padding:9px 2px 8px; font-size:.66rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit;}
+nav button .ico{font-size:1.25rem; line-height:1;}
+nav button.active{color:var(--accent2);}
+.card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px;}
+.card h2{margin:0 0 8px; font-size:1rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent2);}
+.card h3{margin:12px 0 6px; font-size:.9rem; color:var(--text);}
+.small{font-size:.8rem; color:var(--dim); line-height:1.45;}
+button.btn{background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; font-size:.9rem; font-weight:700; cursor:pointer; font-family:inherit;}
+button.btn.sec{background:var(--panel2); color:var(--text); border:1px solid var(--border);}
+button.btn:active{transform:scale(.97);}
+.row{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+input[type=text],input[type=number],select{background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:9px 10px; font-size:.95rem; font-family:inherit;}
+.pill{display:inline-block; padding:2px 10px; border-radius:999px; font-size:.72rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px;}
+.lv-blue{background:var(--blue); color:#fff;} .lv-yellow{background:var(--yellow); color:#222;}
+.lv-orange{background:var(--orange); color:#fff;} .lv-red{background:var(--red); color:#fff;}
+
+/* Turn guide */
+.phasebar{display:flex; gap:6px; margin-bottom:12px;}
+.phasebar div{flex:1; text-align:center; font-size:.68rem; text-transform:uppercase; letter-spacing:.5px; padding:7px 2px; border-radius:8px; background:var(--panel2); color:var(--dim); border:1px solid var(--border);}
+.phasebar div.cur{background:var(--accent); color:#fff; border-color:var(--accent); font-weight:800;}
+.step{display:flex; gap:10px; padding:10px 8px; border-bottom:1px solid var(--border); cursor:pointer;}
+.step:last-child{border-bottom:none;}
+.step .chk{width:22px; height:22px; min-width:22px; border:2px solid var(--dim); border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:.85rem; color:#fff; margin-top:1px;}
+.step.done .chk{background:var(--green); border-color:var(--green);}
+.step.done .stitle{text-decoration:line-through; color:var(--dim);}
+.step .stitle{font-weight:700; font-size:.9rem;}
+.step .sdesc{font-size:.78rem; color:var(--dim); margin-top:2px; line-height:1.4;}
+details{background:var(--panel2); border-radius:8px; margin:8px 0; border:1px solid var(--border);}
+details summary{padding:10px 12px; cursor:pointer; font-weight:700; font-size:.86rem;}
+details .body{padding:0 12px 12px; font-size:.8rem; color:var(--dim); line-height:1.5;}
+details .body b{color:var(--text);}
+details .body ul{margin:6px 0; padding-left:18px;}
+details .body li{margin-bottom:4px;}
+
+/* Survivors */
+.surv{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
+.surv.dead{opacity:.55; border-color:var(--red);}
+.surv-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+.surv-head .name{font-weight:800; font-size:1.05rem;}
+.statrow{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+.stat{flex:1; min-width:130px; background:var(--panel2); border-radius:8px; padding:8px;}
+.stat .lbl{font-size:.66rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); margin-bottom:4px;}
+.stat .ctl{display:flex; align-items:center; gap:8px;}
+.stat .ctl button{width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:1.1rem; cursor:pointer; font-weight:700;}
+.stat .val{font-size:1.15rem; font-weight:800; min-width:34px; text-align:center;}
+.xpbar{height:8px; background:var(--bg); border-radius:4px; margin-top:6px; overflow:hidden; display:flex;}
+.xpbar i{display:block; height:100%;}
+.pips{display:flex; gap:6px; margin-top:2px; flex-wrap:wrap;}
+.pip{width:26px; height:26px; border-radius:50%; border:2px solid var(--accent); background:var(--accent); cursor:pointer;}
+.pip.spent{background:transparent; opacity:.4;}
+.woundbox{display:flex; gap:6px;}
+.wound{width:26px; height:26px; border-radius:6px; border:2px solid var(--red); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--red); font-weight:900;}
+.wound.on{background:var(--red); color:#fff;}
+.inv{margin-top:10px;}
+.inv .slot{display:flex; gap:6px; align-items:center; margin-bottom:5px;}
+.inv .slot .tag{font-size:.62rem; text-transform:uppercase; width:52px; color:var(--dim); font-weight:700;}
+.inv .slot input{flex:1; padding:6px 8px; font-size:.85rem;}
+.deadband{margin-top:8px; color:var(--red); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:.85rem;}
+
+/* Dice */
+.dicewrap{display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:16px 0; min-height:64px;}
+.die{width:58px; height:58px; border-radius:12px; background:#f5f0e6; color:#222; display:flex; align-items:center; justify-content:center; font-size:1.7rem; font-weight:900; box-shadow:0 3px 0 #b5ab99; transition:transform .1s;}
+.die.hit{background:var(--green); color:#fff; box-shadow:0 3px 0 #1d7d46;}
+.die.rolling{animation:shake .35s infinite;}
+@keyframes shake{0%{transform:rotate(-8deg)}50%{transform:rotate(8deg)}100%{transform:rotate(-8deg)}}
+.diceres{text-align:center; font-size:1.05rem; font-weight:800; min-height:28px;}
+.numctl{display:flex; align-items:center; gap:10px;}
+.numctl button{width:38px; height:38px; border-radius:10px; border:1px solid var(--border); background:var(--panel2); color:var(--text); font-size:1.25rem; cursor:pointer;}
+.numctl .nv{font-size:1.3rem; font-weight:900; min-width:30px; text-align:center;}
+
+/* Spawn */
+.spawncard{background:var(--panel2); border:2px solid var(--accent); border-radius:14px; padding:16px; margin-top:12px; text-align:center;}
+.spawncard .cname{font-size:1.05rem; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;}
+.spawnline{display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:8px; margin-bottom:6px; background:var(--panel); font-size:.9rem;}
+.spawnline.hot{outline:2px solid #fff; font-weight:800;}
+.spawnline .dot{width:14px; height:14px; border-radius:50%; min-width:14px;}
+.special{font-size:1rem; font-weight:800; color:var(--yellow); padding:10px 0;}
+.deckinfo{font-size:.75rem; color:var(--dim); text-align:center; margin-top:8px;}
+
+/* QR */
+#qrbox{background:#fff; padding:14px; border-radius:12px; width:fit-content; margin:14px auto;}
+.footer-note{font-size:.68rem; color:var(--dim); text-align:center; margin:18px 8px 8px; line-height:1.5;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#129504; Zombicide Companion</h1>
+  <div class="sub">1st Edition &bull; unofficial fan-made helper</div>
+</header>
+
+<!-- ============ TURN GUIDE ============ -->
+<div class="screen active" id="scr-guide">
+  <div class="card">
+    <div class="row" style="justify-content:space-between;">
+      <h2 style="margin:0;">Round <span id="roundNum">1</span></h2>
+      <div class="row">
+        <span class="pill" id="dangerPill">Blue</span>
+        <button class="btn sec" style="padding:6px 10px;font-size:.75rem;" onclick="resetRound(true)">Restart round</button>
+      </div>
+    </div>
+    <div class="small" style="margin-top:4px;">Danger level = highest-XP living survivor (set on the Survivors tab).</div>
+  </div>
+
+  <div class="phasebar" id="phasebar"></div>
+  <div class="card" id="phaseCard"></div>
+
+  <div class="card">
+    <h2>Rules Quick Reference</h2>
+    <details><summary>Survivor actions (cost 1 each)</summary><div class="body"><ul>
+      <li><b>Move</b> 1 zone. Leaving a zone with zombies costs <b>+1 action per zombie</b>. Entering a zone with zombies <b>ends</b> your move action.</li>
+      <li><b>Search</b> &mdash; buildings only, no zombies in the zone, <b>once per turn</b>. Draw 1 equipment card. Free inventory reorganize afterwards.</li>
+      <li><b>Open a door</b> &mdash; needs a weapon with the door symbol in hand. Noisy weapons add a noise token. First opening of a building: draw a zombie card for <b>every zone</b> inside it.</li>
+      <li><b>Melee attack</b> &mdash; your zone; you assign hits freely.</li>
+      <li><b>Ranged attack</b> &mdash; zone in sight &amp; range; hits follow priority: <b>Survivors &rarr; Walkers &rarr; Fatties/Abominations &rarr; Runners</b> (Sniper Rifle picks targets freely).</li>
+      <li><b>Reorganize / trade</b> with one survivor in your zone.</li>
+      <li><b>Car:</b> get in/out, change seats, or drive 1&ndash;2 zones (runs over everything: roll 1 die per mini, 4+ hits, 1 damage, ranged priority).</li>
+      <li><b>Take/activate objective</b>, <b>make noise</b> (place a noise token), or <b>do nothing</b>.</li>
+    </ul></div></details>
+    <details><summary>Weapon damage &amp; XP</summary><div class="body"><ul>
+      <li><b>1 damage</b> kills Walkers &amp; Runners (1 XP each).</li>
+      <li><b>2 damage</b> needed for Fatties (1 XP). 1-damage hits bounce off entirely.</li>
+      <li><b>3 damage</b> or a Molotov for the Abomination (5 XP).</li>
+      <li>Each hit kills only one target &mdash; excess damage is wasted.</li>
+      <li><b>Dual</b> weapons: two identical in hand = both fire for one action, same target zone.</li>
+      <li><b>Combos:</b> Rifle + Scope = Sniper Rifle. Glass bottle + Gasoline = Molotov (kills everything in the zone, then discard).</li>
+    </ul></div></details>
+    <details><summary>Danger levels</summary><div class="body"><ul>
+      <li><b style="color:var(--blue)">Blue</b> 0&ndash;6 XP &mdash; 3 actions, starting skill.</li>
+      <li><b style="color:var(--yellow)">Yellow</b> 7&ndash;18 XP &mdash; <b>+1 action</b> (4 total).</li>
+      <li><b style="color:var(--orange)">Orange</b> 19&ndash;42 XP &mdash; choose 1 of 2 skills.</li>
+      <li><b style="color:var(--red)">Red</b> 43+ XP &mdash; choose 1 of 3 skills.</li>
+      <li>Zombies spawn at the level of the <b>highest</b> living survivor.</li>
+    </ul></div></details>
+    <details><summary>Zombie movement rules</summary><div class="body"><ul>
+      <li>Zombies that can <b>see</b> a survivor move toward them; if several groups are visible, toward the <b>noisiest</b> (each survivor counts as 1 noise token).</li>
+      <li>If none visible: toward the zone with the most noise tokens (through doors as if open if no path exists &mdash; locked doors still stop them).</li>
+      <li>Always the <b>shortest route</b>. Equal routes/targets: the group <b>splits evenly</b> &mdash; add zombies to keep the groups identical. Abominations never split (players choose). Added Fatties get no walker escort.</li>
+      <li>Out of miniatures? All zombies of that type get an <b>extra activation</b> instead.</li>
+    </ul></div></details>
+  </div>
+</div>
+
+<!-- ============ SURVIVORS ============ -->
+<div class="screen" id="scr-surv">
+  <div class="card">
+    <h2>Add Survivor</h2>
+    <div class="row">
+      <input type="text" id="newName" placeholder="Survivor name (e.g. Wanda)" style="flex:1;">
+      <button class="btn" onclick="addSurvivor()">Add</button>
+    </div>
+    <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each.</div>
+  </div>
+  <div id="survList"></div>
+  <div class="row" style="justify-content:center; margin-top:4px;">
+    <button class="btn sec" onclick="resetAllActions()">Refresh all actions (new round)</button>
+  </div>
+</div>
+
+<!-- ============ DICE ============ -->
+<div class="screen" id="scr-dice">
+  <div class="card">
+    <h2>Dice Roller</h2>
+    <div class="row" style="justify-content:space-around; margin:10px 0;">
+      <div style="text-align:center;">
+        <div class="small" style="margin-bottom:6px;">DICE</div>
+        <div class="numctl">
+          <button onclick="chgDice(-1)">&minus;</button><span class="nv" id="diceN">3</span><button onclick="chgDice(1)">+</button>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div class="small" style="margin-bottom:6px;">ACCURACY (hit on N+)</div>
+        <div class="numctl">
+          <button onclick="chgAcc(-1)">&minus;</button><span class="nv" id="accN">4</span><button onclick="chgAcc(1)">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="dicewrap" id="diceWrap"></div>
+    <div class="diceres" id="diceRes"></div>
+    <div class="row" style="justify-content:center; margin-top:10px;">
+      <button class="btn" style="font-size:1.05rem; padding:12px 34px;" onclick="rollDice()">&#127922; ROLL</button>
+    </div>
+    <div class="small" style="text-align:center; margin-top:10px;">Set dice &amp; accuracy from your weapon card. Green dice are hits. Remember: <b>Plenty of Ammo</b> lets you reroll once; <b>+1 die/+1 to rolls</b> skills apply too.</div>
+  </div>
+</div>
+
+<!-- ============ SPAWN ============ -->
+<div class="screen" id="scr-spawn">
+  <div class="card">
+    <h2>Zombie Spawn Deck</h2>
+    <div class="small">Draw one card per spawn zone, always starting at the same zone and going clockwise. Read the line matching the danger level of the <b>highest-XP living survivor</b>. Also draw one card per zone when a building is first opened.</div>
+    <div class="row" style="margin-top:10px;">
+      <label class="small">Danger level:</label>
+      <select id="spawnLevel" onchange="renderSpawn()">
+        <option value="auto">Auto (from survivors)</option>
+        <option value="blue">Blue</option>
+        <option value="yellow">Yellow</option>
+        <option value="orange">Orange</option>
+        <option value="red">Red</option>
+      </select>
+    </div>
+    <div class="row" style="justify-content:center; margin-top:12px;">
+      <button class="btn" style="font-size:1.05rem; padding:12px 30px;" onclick="drawSpawn()">Draw Zombie Card</button>
+    </div>
+    <div id="spawnResult"></div>
+    <div class="deckinfo" id="deckInfo"></div>
+    <div class="row" style="justify-content:center; margin-top:10px;">
+      <button class="btn sec" style="font-size:.78rem;" onclick="reshuffleDeck(true)">Reshuffle deck</button>
+    </div>
+    <div class="small" style="margin-top:12px;">Reminders: each <b>Fatty</b> spawns with 2 Walker escorts. The <b>Abomination</b> spawns alone; if a second one is drawn, place a Fatty + 2 Walkers instead. <b>Extra Activation</b> cards have no effect at Blue level. <b>Manhole</b> cards spawn at every manhole on tiles where survivors stand. Deck simulates the official 42-card deck; use your physical deck if you prefer.</div>
+  </div>
+</div>
+
+<!-- ============ SHARE ============ -->
+<div class="screen" id="scr-share">
+  <div class="card">
+    <h2>Link Other Devices</h2>
+    <div class="small" id="shareMsg"></div>
+    <div id="qrbox"></div>
+    <div class="row" id="customUrlRow" style="display:none;">
+      <input type="text" id="customUrl" placeholder="https://your-host/zombicide-companion.html" style="flex:1;">
+      <button class="btn" onclick="makeQR(document.getElementById('customUrl').value)">Make QR</button>
+    </div>
+    <div class="small" style="margin-top:12px;">
+      Each phone runs its own independent companion &mdash; every player tracks their own survivors and dice. To share it: host this single file anywhere (GitHub Pages, Netlify Drop, or any web server), open the URL on one phone, then let everyone scan the QR code. It works offline once loaded, or you can simply send the file to each player (AirDrop, messenger) and they open it in their browser.
+    </div>
+  </div>
+  <div class="footer-note">Unofficial fan-made companion for the Zombicide board game (1st Edition) by Guillotine Games / CMON. Not affiliated with or endorsed by the publishers. Own the game to play!</div>
+</div>
+
+<nav>
+  <button class="active" data-scr="guide" onclick="show('guide')"><span class="ico">&#128214;</span>Turn Guide</button>
+  <button data-scr="surv" onclick="show('surv')"><span class="ico">&#129485;</span>Survivors</button>
+  <button data-scr="dice" onclick="show('dice')"><span class="ico">&#127922;</span>Dice</button>
+  <button data-scr="spawn" onclick="show('spawn')"><span class="ico">&#129503;</span>Spawn</button>
+  <button data-scr="share" onclick="show('share')"><span class="ico">&#128241;</span>Share</button>
+</nav>
+
+<script>
+/* ---------- persistence (graceful if storage unavailable) ---------- */
+function save(k,v){ try{ localStorage.setItem('zc_'+k, JSON.stringify(v)); }catch(e){} }
+function load(k,d){ try{ const v=localStorage.getItem('zc_'+k); return v?JSON.parse(v):d; }catch(e){ return d; } }
+
+/* ---------- navigation ---------- */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('scr-'+id).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.scr===id));
+  window.scrollTo(0,0);
+}
+
+/* ---------- danger level helpers ---------- */
+const LEVELS=[
+  {key:'blue',  name:'Blue',  min:0,  max:6,  cls:'lv-blue',  col:'var(--blue)'},
+  {key:'yellow',name:'Yellow',min:7,  max:18, cls:'lv-yellow',col:'var(--yellow)'},
+  {key:'orange',name:'Orange',min:19, max:42, cls:'lv-orange',col:'var(--orange)'},
+  {key:'red',   name:'Red',   min:43, max:60, cls:'lv-red',   col:'var(--red)'}
+];
+function levelOf(xp){ if(xp>=43)return LEVELS[3]; if(xp>=19)return LEVELS[2]; if(xp>=7)return LEVELS[1]; return LEVELS[0]; }
+function teamLevel(){
+  let best=null;
+  survivors.forEach(s=>{ if(s.wounds<2){ const l=levelOf(s.xp); if(!best||l.min>best.min) best=l; } });
+  return best||LEVELS[0];
+}
+function updateDangerPill(){
+  const l=teamLevel(); const p=document.getElementById('dangerPill');
+  p.textContent=l.name; p.className='pill '+l.cls;
+}
+
+/* ---------- TURN GUIDE ---------- */
+const PHASES=[
+  {name:"Players' Phase", steps:[
+    {t:"First player starts", d:"The player holding the first-player token activates their survivors one at a time, in any order. Then play passes left."},
+    {t:"Spend each survivor's actions", d:"3 actions each (4 from Yellow level). Free skill actions don't count. Track them on the Survivors tab."},
+    {t:"Mind the reminders", d:"Only 1 search per survivor per turn. Leaving a zombie zone costs +1 action per zombie. Noisy weapons & door-openings drop noise tokens. Each survivor mini counts as noise."},
+    {t:"All players done?", d:"When every player has activated all their survivors, the Players' Phase ends."}
+  ]},
+  {name:"Zombies' Phase", steps:[
+    {t:"1a. Zombies ATTACK", d:"Every zombie in a zone with a survivor attacks — automatic hit, no roll. Each attack: 1 wound + the survivor discards 1 equipment card of their choice (wound card takes its slot). 2 wounds = dead. All zombies in the zone pile on."},
+    {t:"1b. Zombies MOVE", d:"All zombies that didn't attack move 1 zone toward visible survivors (noisiest group if several) or, if none visible, the noisiest zone. Shortest route; split evenly on ties — add minis to keep groups identical."},
+    {t:"1c. Runners go AGAIN", d:"Runners have 2 actions: after everything has activated once, each runner attacks or moves a second time."},
+    {t:"2. SPAWN", d:"Draw one zombie card per spawn zone (same starting zone, clockwise). Read the line for the current danger level — use the Spawn tab. Fatties bring 2 walkers; a 2nd Abomination becomes a Fatty + 2 walkers."}
+  ]},
+  {name:"End Phase", steps:[
+    {t:"Remove ALL noise tokens", d:"Clear every noise token from the board."},
+    {t:"Pass the first-player token", d:"Hand it to the player on the left."},
+    {t:"Reload weapons", d:"Sawed-off (and similar reload weapons) reload for free now."},
+    {t:"Start the next round", d:"Tap below to refresh every survivor's actions and advance the round counter."}
+  ]}
+];
+let guide=load('guide',{round:1, phase:0, done:{}});
+function renderGuide(){
+  const pb=document.getElementById('phasebar'); pb.innerHTML='';
+  PHASES.forEach((p,i)=>{
+    const d=document.createElement('div'); d.textContent=p.name.replace("' Phase","'").replace(" Phase","");
+    if(i===guide.phase)d.classList.add('cur');
+    d.onclick=()=>{guide.phase=i; save('guide',guide); renderGuide();};
+    pb.appendChild(d);
+  });
+  const ph=PHASES[guide.phase];
+  const card=document.getElementById('phaseCard');
+  let html='<h2>'+ph.name+'</h2>';
+  ph.steps.forEach((s,i)=>{
+    const key=guide.phase+'_'+i; const done=guide.done[key];
+    html+='<div class="step'+(done?' done':'')+'" onclick="toggleStep(\''+key+'\')">'+
+      '<div class="chk">'+(done?'&#10003;':'')+'</div>'+
+      '<div><div class="stitle">'+s.t+'</div><div class="sdesc">'+s.d+'</div></div></div>';
+  });
+  const last = guide.phase===PHASES.length-1;
+  html+='<div class="row" style="justify-content:flex-end; margin-top:12px;">'+
+    '<button class="btn" onclick="nextPhase()">'+(last?'&#9654; Next Round':'Next Phase &#9654;')+'</button></div>';
+  card.innerHTML=html;
+  document.getElementById('roundNum').textContent=guide.round;
+  updateDangerPill();
+}
+function toggleStep(key){ guide.done[key]=!guide.done[key]; save('guide',guide); renderGuide(); }
+function nextPhase(){
+  if(guide.phase<PHASES.length-1){ guide.phase++; }
+  else { guide.round++; guide.phase=0; guide.done={}; resetAllActions(); }
+  save('guide',guide); renderGuide();
+}
+function resetRound(confirmIt){
+  if(confirmIt && !confirm('Reset checkboxes for this round?'))return;
+  guide.phase=0; guide.done={}; save('guide',guide); renderGuide();
+}
+
+/* ---------- SURVIVORS ---------- */
+let survivors=load('survivors',[]);
+function baseActions(s){ return levelOf(s.xp).min>=7 ? 4 : 3; }
+function addSurvivor(){
+  const inp=document.getElementById('newName');
+  const name=inp.value.trim(); if(!name)return;
+  survivors.push({name:name, xp:0, wounds:0, spent:0, inv:['','','','','']});
+  inp.value=''; persistSurv();
+}
+function persistSurv(){ save('survivors',survivors); renderSurv(); updateDangerPill(); renderSpawn(); }
+function chgXp(i,d){ const s=survivors[i]; const before=baseActions(s); s.xp=Math.max(0,Math.min(60,s.xp+d)); if(baseActions(s)>before) s.spent=Math.max(0,s.spent); persistSurv(); }
+function toggleWound(i,w){ const s=survivors[i]; s.wounds = (s.wounds>w)? w : w+1; persistSurv(); }
+function togglePip(i,p){ const s=survivors[i]; s.spent = (s.spent>p)? p : p+1; persistSurv(); }
+function setInv(i,slot,val){ survivors[i].inv[slot]=val; save('survivors',survivors); }
+function removeSurv(i){ if(confirm('Remove '+survivors[i].name+'?')){ survivors.splice(i,1); persistSurv(); } }
+function resetAllActions(){ survivors.forEach(s=>s.spent=0); persistSurv(); }
+function renderSurv(){
+  const list=document.getElementById('survList'); list.innerHTML='';
+  if(!survivors.length){ list.innerHTML='<div class="small" style="text-align:center; padding:20px;">No survivors yet &mdash; add your team above.</div>'; return; }
+  survivors.forEach((s,i)=>{
+    const lvl=levelOf(s.xp); const dead=s.wounds>=2; const acts=baseActions(s);
+    const div=document.createElement('div'); div.className='surv'+(dead?' dead':'');
+    let pips=''; for(let p=0;p<acts;p++) pips+='<div class="pip'+(p<s.spent?' spent':'')+'" onclick="togglePip('+i+','+p+')"></div>';
+    let wounds=''; for(let w=0;w<2;w++) wounds+='<div class="wound'+(w<s.wounds?' on':'')+'" onclick="toggleWound('+i+','+w+')">&#10007;</div>';
+    // xp bar segments
+    let bar='';
+    LEVELS.forEach(L=>{
+      const span=L.max-L.min+1;
+      const fill = s.xp<=L.min?0 : Math.min(1,(s.xp-L.min)/span);
+      bar+='<i style="width:'+(span/61*100)+'%; background:linear-gradient(to right,'+L.col+' '+(fill*100)+'%, var(--bg) '+(fill*100)+'%);"></i>';
+    });
+    let inv='';
+    const tags=['Hand 1','Hand 2','Reserve','Reserve','Reserve'];
+    for(let k=0;k<5;k++){
+      inv+='<div class="slot"><span class="tag">'+tags[k]+'</span><input type="text" placeholder="empty" value="'+(s.inv[k]||'').replace(/"/g,'&quot;')+'" onchange="setInv('+i+','+k+',this.value)"></div>';
+    }
+    div.innerHTML=
+      '<div class="surv-head"><span class="name">'+s.name+'</span>'+
+      '<span class="row"><span class="pill '+lvl.cls+'">'+lvl.name+'</span>'+
+      '<button class="btn sec" style="padding:4px 9px;font-size:.72rem;" onclick="removeSurv('+i+')">&#10005;</button></span></div>'+
+      (dead?'<div class="deadband">&#9760; Eliminated &mdash; discard equipment</div>':'')+
+      '<div class="statrow">'+
+        '<div class="stat"><div class="lbl">XP: <b style="color:var(--text)">'+s.xp+'</b>'+(lvl.key==='yellow'?' (+1 action!)':'')+(lvl.key==='orange'?' (pick 1 of 2 skills)':'')+(lvl.key==='red'?' (pick 1 of 3 skills)':'')+'</div>'+
+          '<div class="ctl"><button onclick="chgXp('+i+',-1)">&minus;</button><span class="val">'+s.xp+'</span><button onclick="chgXp('+i+',1)">+</button><button onclick="chgXp('+i+',5)" style="width:auto;padding:0 8px;font-size:.8rem;">+5</button></div>'+
+          '<div class="xpbar">'+bar+'</div></div>'+
+        '<div class="stat"><div class="lbl">Actions ('+(acts-s.spent)+'/'+acts+' left &mdash; tap to spend)</div><div class="pips">'+pips+'</div></div>'+
+        '<div class="stat" style="flex:0 0 auto;"><div class="lbl">Wounds</div><div class="woundbox">'+wounds+'</div></div>'+
+      '</div>'+
+      '<details class="inv"><summary>Inventory (5 slots, wounds take slots)</summary><div class="body">'+inv+'</div></details>';
+    list.appendChild(div);
+  });
+}
+
+/* ---------- DICE ---------- */
+let diceN=load('diceN',3), accN=load('accN',4);
+function chgDice(d){ diceN=Math.max(1,Math.min(12,diceN+d)); save('diceN',diceN); document.getElementById('diceN').textContent=diceN; }
+function chgAcc(d){ accN=Math.max(2,Math.min(6,accN+d)); save('accN',accN); document.getElementById('accN').textContent=accN; }
+let rolling=false;
+function rollDice(){
+  if(rolling)return; rolling=true;
+  const wrap=document.getElementById('diceWrap'); wrap.innerHTML='';
+  const res=document.getElementById('diceRes'); res.textContent='';
+  const dies=[];
+  for(let i=0;i<diceN;i++){ const d=document.createElement('div'); d.className='die rolling'; d.textContent='?'; wrap.appendChild(d); dies.push(d); }
+  let ticks=0;
+  const iv=setInterval(()=>{
+    dies.forEach(d=>d.textContent=1+Math.floor(Math.random()*6));
+    if(++ticks>=8){
+      clearInterval(iv);
+      let hits=0;
+      dies.forEach(d=>{
+        const v=1+Math.floor(Math.random()*6);
+        d.textContent=v; d.classList.remove('rolling');
+        if(v>=accN){ d.classList.add('hit'); hits++; }
+      });
+      res.innerHTML = hits>0 ? '<span style="color:var(--green)">'+hits+' HIT'+(hits>1?'S':'')+'!</span>' : '<span style="color:var(--dim)">Miss... the horde shambles on.</span>';
+      rolling=false;
+    }
+  },70);
+}
+
+/* ---------- SPAWN DECK (simulates the official 42-card deck) ---------- */
+function C(name,b,y,o,r){ return {name:name, lines:{blue:b, yellow:y, orange:o, red:r}}; }
+function z(w,ru,f,a){ return {w:w||0, r:ru||0, f:f||0, a:a||0}; }
+function buildDeck(){
+  const cards=[];
+  for(let i=0;i<5;i++) cards.push(C('Walkers', z(1), z(2), z(4), z(6)));
+  for(let i=0;i<4;i++) cards.push(C('Walkers', z(2), z(3), z(5), z(8)));
+  for(let i=0;i<3;i++) cards.push(C('Shuffling Horde', z(0), z(1), z(3), z(5)));
+  for(let i=0;i<3;i++) cards.push(C('Walkers', z(1), z(3), z(4), z(7)));
+  for(let i=0;i<4;i++) cards.push(C('Runners', z(0), z(0,1), z(0,2), z(0,3)));
+  for(let i=0;i<2;i++) cards.push(C('Runners', z(0,1), z(0,1), z(0,2), z(0,4)));
+  for(let i=0;i<4;i++) cards.push(C('Fatty', z(0,0,1), z(0,0,1), z(0,0,2), z(0,0,2)));
+  for(let i=0;i<2;i++) cards.push(C('Fatty', z(1), z(0,0,1), z(0,0,1), z(0,0,2)));
+  for(let i=0;i<2;i++) cards.push(C('Abomination', z(0,0,0,1), z(0,0,0,1), z(0,0,0,1), z(0,0,0,1)));
+  for(let i=0;i<4;i++) cards.push(C('Mixed Mob', z(1), z(1,1), z(2,1,1), z(3,2,1)));
+  for(let i=0;i<3;i++) cards.push({name:'EXTRA ACTIVATION: Walkers', special:'extra', ztype:'Walkers'});
+  for(let i=0;i<2;i++) cards.push({name:'EXTRA ACTIVATION: Runners', special:'extra', ztype:'Runners'});
+  for(let i=0;i<2;i++) cards.push({name:'EXTRA ACTIVATION: Fatties', special:'extra', ztype:'Fatties'});
+  for(let i=0;i<2;i++) cards.push({name:'MANHOLES!', special:'manhole', lines:{blue:z(1), yellow:z(1), orange:z(2), red:z(2)}});
+  return cards; // 42 cards
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+let deck=load('deck',null), discard=load('discard',0), lastCard=load('lastCard',null);
+if(!deck||!deck.length&&discard===0){ deck=shuffle(buildDeck()); discard=0; }
+function reshuffleDeck(manual){
+  deck=shuffle(buildDeck()); discard=0; lastCard=null;
+  save('deck',deck); save('discard',discard); save('lastCard',lastCard);
+  renderSpawn();
+  if(manual) document.getElementById('deckInfo').textContent='Deck reshuffled — 42 cards.';
+}
+function drawSpawn(){
+  if(!deck.length){ deck=shuffle(buildDeck()); discard=0; }
+  lastCard=deck.pop(); discard++;
+  save('deck',deck); save('discard',discard); save('lastCard',lastCard);
+  renderSpawn();
+}
+function currentSpawnLevel(){
+  const sel=document.getElementById('spawnLevel').value;
+  return sel==='auto' ? teamLevel().key : sel;
+}
+function zombieText(L){
+  const parts=[];
+  if(L.w)parts.push(L.w+' Walker'+(L.w>1?'s':''));
+  if(L.r)parts.push(L.r+' Runner'+(L.r>1?'s':''));
+  if(L.f)parts.push(L.f+' Fatt'+(L.f>1?'ies':'y')+' (+'+(L.f*2)+' Walker escort)');
+  if(L.a)parts.push(L.a+' Abomination');
+  return parts.length?parts.join(', '):'Nothing — lucky!';
+}
+function renderSpawn(){
+  const box=document.getElementById('spawnResult');
+  const info=document.getElementById('deckInfo');
+  info.textContent=deck?('Cards left in deck: '+deck.length+' • drawn: '+discard):'';
+  if(!lastCard){ box.innerHTML=''; return; }
+  const lvl=currentSpawnLevel();
+  let html='<div class="spawncard"><div class="cname">'+lastCard.name+'</div>';
+  if(lastCard.special==='extra'){
+    html+='<div class="special">&#9889; All '+lastCard.ztype+' on the board activate again now!</div>'+
+      '<div class="small">No zombies spawn in this zone. No effect at Blue danger level.</div>';
+  } else {
+    const isManhole=lastCard.special==='manhole';
+    if(isManhole) html+='<div class="special">&#128679; Spawn at EVERY manhole zone on tiles with survivors:</div>';
+    ['blue','yellow','orange','red'].forEach(k=>{
+      const L=LEVELS.find(x=>x.key===k);
+      html+='<div class="spawnline'+(k===lvl?' hot':'')+'"><span class="dot" style="background:'+L.col+'"></span>'+
+        '<span>'+zombieText(lastCard.lines[k])+'</span></div>';
+    });
+    if(!isManhole) html+='<div class="small" style="margin-top:6px;">Place these in the spawn zone (highlighted line = current danger level).</div>';
+  }
+  html+='</div>';
+  box.innerHTML=html;
+}
+
+/* ---------- SHARE / QR ---------- */
+function makeQR(url){
+  const box=document.getElementById('qrbox'); box.innerHTML='';
+  if(!url){ box.style.display='none'; return; }
+  box.style.display='block';
+  try{ new QRCode(box,{text:url, width:200, height:200, correctLevel:QRCode.CorrectLevel.M}); }
+  catch(e){ box.style.display='none'; document.getElementById('shareMsg').textContent='QR library unavailable (offline?) — share the link/file directly instead.'; }
+}
+function initShare(){
+  const msg=document.getElementById('shareMsg');
+  if(location.protocol==='http:'||location.protocol==='https:'){
+    msg.innerHTML='Scan to open this companion on another phone:';
+    makeQR(location.href);
+  } else {
+    msg.innerHTML='This file is open locally, so there\'s no URL to encode yet. Host it online (free: <b>Netlify Drop</b> or <b>GitHub Pages</b>), then paste the URL below to make a QR code:';
+    document.getElementById('customUrlRow').style.display='flex';
+    makeQR(null);
+  }
+}
+
+/* ---------- init ---------- */
+document.getElementById('diceN').textContent=diceN;
+document.getElementById('accN').textContent=accN;
+renderGuide(); renderSurv(); renderSpawn(); initShare();
+document.getElementById('newName').addEventListener('keydown',e=>{ if(e.key==='Enter')addSurvivor(); });
+</script>
+</body>
+</html>
