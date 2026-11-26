@@ -33,7 +33,7 @@ header .sub{font-size:.72rem; color:var(--dim); margin-top:2px;}
 .screen{display:none; padding:14px; max-width:640px; margin:0 auto;}
 .screen.active{display:block;}
 nav{position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--panel); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); z-index:50;}
-nav button{flex:1; background:none; border:none; color:var(--dim); padding:9px 2px 8px; font-size:.66rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit;}
+nav button{flex:1; min-width:0; background:none; border:none; color:var(--dim); padding:9px 2px 8px; font-size:.66rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit;}
 nav button .ico{font-size:1.25rem; line-height:1;}
 nav button.active{color:var(--accent2);}
 .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px;}
@@ -108,7 +108,6 @@ details .body li{margin-bottom:4px;}
 .tree .opt{display:inline-block; margin:0 6px 3px 0; color:var(--dim);}
 .tree .opt.got{color:var(--text); font-weight:800;}
 .tree .opt.got::before{content:'\2713 '; color:var(--green);}
-.guess{color:var(--yellow); font-size:.68rem; font-weight:700;}
 .modal{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-end; justify-content:center; z-index:100; padding:16px;}
 .modal.open{display:flex;}
 .modal .sheet{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; width:100%; max-width:520px; max-height:85vh; overflow:auto; margin-bottom:env(safe-area-inset-bottom);}
@@ -166,6 +165,24 @@ details .body li{margin-bottom:4px;}
 .spawnline .dot{width:14px; height:14px; border-radius:50%; min-width:14px;}
 .special{font-size:1rem; font-weight:800; color:var(--yellow); padding:10px 0;}
 .deckinfo{font-size:.75rem; color:var(--dim); text-align:center; margin-top:8px;}
+
+/* Mission */
+.mmeta{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 8px;}
+.mmeta span{font-size:.7rem; background:var(--panel2); border:1px solid var(--border); border-radius:999px; padding:2px 9px; color:var(--dim);}
+.mstatus{text-align:center; font-weight:900; text-transform:uppercase; letter-spacing:1px; padding:12px; border-radius:10px; margin-bottom:12px; font-size:.95rem;}
+.mstatus.win{background:var(--green); color:#fff;}
+.mstatus.lose{background:var(--red); color:#fff;}
+.tokcount{font-size:2rem; font-weight:900; text-align:center; margin:6px 0;}
+.tokbtns{display:flex; flex-direction:column; gap:6px; margin-top:8px;}
+.tokbtns button{text-align:left;}
+.tokbtns button:disabled{opacity:.4;}
+.toklog{font-size:.75rem; color:var(--dim); margin-top:8px; line-height:1.5;}
+.guess{color:var(--dim); font-size:.72rem; font-style:italic; font-weight:400;}
+.step.lose.done .chk{background:var(--red); border-color:var(--red);}
+.step.auto{cursor:default;}
+.mapimg{display:block; width:100%; height:auto; border-radius:8px; border:1px solid var(--border); margin-bottom:2px;}
+.tilegrid{display:grid; gap:4px; max-width:320px; margin:4px auto 0;}
+.tilegrid .tile{aspect-ratio:1; background:var(--bg); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.1rem; color:var(--text);}
 
 /* QR */
 #qrbox{background:#fff; padding:14px; border-radius:12px; width:fit-content; margin:14px auto;}
@@ -323,6 +340,23 @@ details .body li{margin-bottom:4px;}
   </div>
 </div>
 
+<!-- ============ MISSION ============ -->
+<div class="screen" id="scr-mission">
+  <div class="card">
+    <h2>Mission</h2>
+    <select id="missionSel" onchange="pickMission(this.value)" style="width:100%;"></select>
+    <div id="missionInfo"></div>
+  </div>
+  <div id="missionStatus"></div>
+  <div class="card" id="tokenCard"></div>
+  <div class="card" id="winCard"></div>
+  <div class="card" id="loseCard"></div>
+  <div class="row" style="justify-content:center;">
+    <button class="btn sec" onclick="resetMission()">Restart this mission</button>
+  </div>
+  <div class="footer-note">Mission text paraphrased from the official 1st Edition rulebook. Objective token counts were counted from the rulebook maps; adjust them if your board differs. Notes in <i>(italic brackets)</i> are inferred, not quoted.</div>
+</div>
+
 <!-- ============ SHARE ============ -->
 <div class="screen" id="scr-share">
   <div class="card">
@@ -348,6 +382,7 @@ details .body li{margin-bottom:4px;}
   <button data-scr="surv" onclick="show('surv')"><span class="ico">&#129485;</span>Survivors</button>
   <button data-scr="dice" onclick="show('dice')"><span class="ico">&#127922;</span>Dice</button>
   <button data-scr="spawn" onclick="show('spawn')"><span class="ico">&#129503;</span>Spawn</button>
+  <button data-scr="mission" onclick="show('mission')"><span class="ico">&#127919;</span>Mission</button>
   <button data-scr="share" onclick="show('share')"><span class="ico">&#128241;</span>Share</button>
 </nav>
 
@@ -361,7 +396,7 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
 const UNDO_MAX=40;
 let undoStack=load('undo',[]);
 function snap(label){
-  undoStack.push({label:label, state:JSON.stringify({survivors:survivors, guide:guide, deck:deck, discard:discard, lastCard:lastCard})});
+  undoStack.push({label:label, state:JSON.stringify({survivors:survivors, guide:guide, deck:deck, discard:discard, lastCard:lastCard, mission:mission})});
   if(undoStack.length>UNDO_MAX) undoStack.shift();
   save('undo',undoStack); updateUndoBtn();
 }
@@ -373,16 +408,18 @@ function undo(){
   const top=undoStack.pop(); if(!top)return;
   const st=JSON.parse(top.state);
   survivors=st.survivors; guide=st.guide; deck=st.deck; discard=st.discard; lastCard=st.lastCard;
+  if(st.mission){ mission=st.mission; save('mission',mission); }
   save('survivors',survivors); save('guide',guide); save('deck',deck); save('discard',discard); save('lastCard',lastCard); save('undo',undoStack);
-  customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); updateUndoBtn();
+  customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); updateUndoBtn();
   toast('Undone: '+top.label);
 }
 function newGame(){
-  if(!confirm('Start a new game? This resets survivors to the six base characters, resets to round 1 and reshuffles the spawn deck. (Undo can bring it back.)'))return;
+  if(!confirm('Start a new game? This resets survivors to the six base characters, resets to round 1 and reshuffles the spawn deck, and clears this mission\'s progress (Undo can bring it back.)'))return;
   snap('New game');
   survivors=PRESETS.map(p=>presetSurv(p)); guide={round:1, phase:0, done:{}};
   save('survivors',survivors); save('guide',guide);
-  reshuffleDeck(false); customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); show('surv');
+  mission={id:mission.id, total:mission.total, taken:[], win:{}, lose:{}, who:0}; save('mission',mission);
+  reshuffleDeck(false); customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); renderMission(); show('surv');
   toast('New game started');
 }
 
@@ -657,7 +694,7 @@ function renderPresetSelect(){
   all.style.display=avail.length?'':'none';
   all.textContent=avail.length===PRESETS.length?'Add all 6 base survivors':'Add the other '+avail.length;
 }
-function persistSurv(){ save('survivors',survivors); renderSurv(); renderPresetSelect(); updateDangerPill(); renderSpawn(); }
+function persistSurv(){ save('survivors',survivors); renderSurv(); renderPresetSelect(); updateDangerPill(); renderSpawn(); renderMission(); }
 function chgXp(i,d){
   const s=survivors[i]; const xp=Math.max(0,Math.min(60,s.xp+d)); if(xp===s.xp)return;
   snap('XP for '+s.name);
@@ -676,7 +713,7 @@ function openSkillPicker(i,lv){
   const s=survivors[i]; const p=presetOf(s); const L=LEVELS[levelIdx(lv)];
   let html='<h2>'+esc(s.name)+' reached <span style="color:'+L.col+'">'+L.name+'</span></h2>';
   if(p){
-    html+='<div class="small">Choose 1 of '+p.tree[lv].length+' skills.'+(p.guess.includes(lv)?' <span class="guess">Unverified layout: check your ID card.</span>':'')+'</div>';
+    html+='<div class="small">Choose 1 of '+p.tree[lv].length+' skills.'+(p.guess.includes(lv)?' <span class="guess">(layout unverified, check your ID card)</span>':'')+'</div>';
     p.tree[lv].forEach((n,k)=>{
       html+='<button class="skillopt" onclick="pickSkill('+i+',\''+lv+'\','+k+')"><b>'+esc(n)+'</b><span>'+esc(SKILLS[n]||'')+'</span></button>';
     });
@@ -729,12 +766,12 @@ function skillsBlock(s,i){
         const got = (k==='blue'||k==='yellow') ? reached(s,k) : s.picks[k]===n;
         body+='<span class="opt'+(got?' got':'')+'">'+esc(n)+'</span>';
       });
-      if(p.guess.includes(k)) body+='<span class="guess">guessed layout</span>';
+      if(p.guess.includes(k)) body+=' <span class="guess">(guessed layout)</span>';
       if(PICK_LEVELS.includes(k)&&s.picks[k]) body+=' <a href="#" class="small" onclick="clearPick('+i+',\''+k+'\');return false;">undo</a>';
       body+='</td></tr>';
     });
     body+='</table>';
-    if(p.guess.length) body+='<div class="small" style="margin-top:6px;">Skills marked <span class="guess">guessed layout</span> are this survivor\'s real skills, but which level each sits on isn\'t confirmed. Trust your ID card.</div>';
+    if(p.guess.length) body+='<div class="small" style="margin-top:6px;">Skills marked <span class="guess">(guessed layout)</span> are this survivor\'s real skills, but which level each sits on isn\'t confirmed. Trust your ID card.</div>';
   } else {
     body+='<div class="slot inv" style="display:flex;gap:6px;align-items:center;"><span class="small" style="width:52px;">Blue</span>'+
       '<input type="text" list="skillNamesAll" placeholder="starting skill" value="'+esc(s.picks.blue||'')+'" onchange="setCustomBlue('+i+',this.value)" style="flex:1;padding:6px 8px;font-size:.85rem;"></div>';
@@ -1052,6 +1089,232 @@ function renderSpawn(){
   box.innerHTML=html;
 }
 
+/* ---------- MISSIONS (1st Edition core box, missions 00-10) ----------
+   win/lose items: auto:'tokens' ticks itself when every objective token is taken,
+   auto:'red' when a living survivor hits Red, auto:'allDead' when every survivor is dead.
+   guess:true marks lines inferred rather than taken from the rulebook.
+   tiles = the rulebook's "Tiles needed" list. grid = [cols,rows]. layout = rows of tiles in placement
+   order, top-left first, read from the tile labels on the rulebook maps. map = the rulebook's map
+   picture (maps/mXX.jpg), which also shows each tile's rotation. total = Objective tokens counted on
+   that map. equip = equipment notes.
+   legend = what the map key shows. Other tabs (e.g. Setup) can read MISSIONS directly. */
+/* Official setup from the 1st Edition rulebook (p.4). Shared with any Setup / new-game screen. */
+const SETUP_STEPS=['Choose a Mission.','Place the tiles as shown on the mission map.','Place the doors, cars and Objective tokens.',
+  'Put aside: the pimpmobile cards (Evil Twins, Ma\'s Shotgun), Molotov, Pans and Wounded cards. Keep out 1 Fire Axe, 1 Crowbar and 1 Pistol for starting gear.',
+  'Shuffle the Zombie cards into one deck and the Equipment cards into another.',
+  'Pick survivors: 1 player runs 4, 2 players 3 each, 3 players 2 each, 4\u20136 players 1 each.',
+  'Put the survivor miniatures in the mission\'s starting area.',
+  'Set each ID card\'s XP tracker to the first blue square and the skill counter on the blue skill.',
+  'Deal starting gear at random: the Fire Axe, Crowbar and Pistol, plus enough Pans that every survivor gets 1 card. A survivor whose starting skill names a weapon also gets that card.',
+  'Choose the first player and give them the first-player token (it\'s co-op, so choose, don\'t roll).'];
+const SETUP_ASIDE=['Ma\'s Shotgun','Evil Twins','Molotov','Pans','Wounded cards','1 Fire Axe','1 Crowbar','1 Pistol'];
+const TOK_XP={id:'obj', label:'Objective token', xp:5, obj:true};
+const LOSE_ALL={t:'Every survivor is eliminated', auto:'allDead', guess:true};
+const MISSIONS=[
+  {id:'00', equip:["Do NOT deal the Pistol, Fire Axe and Crowbar: put them on top of the Equipment deck (the first 3 Search draws)", "Pans are dealt as usual", "Zombie deck: cards 1, 2, 3, 4 and 41 only"], tiles:['2B', '1B'], grid:[1, 2], layout:[['2B'], ['1B']], map:'maps/m00.jpg', legend:['Player starting area', 'Zombie Spawn Zone', 'Locked door', 'Objective', '1 Walker (pre-placed)'], name:'Tutorial', diff:'Tutorial', surv:'4+', time:'20 min',
+   intro:'Cross the street to the neighbour\'s house. The zombies got there first.',
+   tokens:[{id:'obj', label:'Objective token', xp:0, obj:true}], total:1,
+   win:[{t:'Take the Objective token', auto:'tokens'}],
+   lose:[LOSE_ALL],
+   rules:['Zombie deck: only cards 1, 2, 3, 4 and 41.','Pistol, Fire Axe and Crowbar are not starting gear: put them on top of the Equipment deck.','The rulebook gives this token no XP value.']},
+  {id:'01', equip:["Standard starting equipment", "You need 1 Canned Food, 1 Rice and 1 Water from the Equipment deck to win"], tiles:['2C', '1C', '4B', '5C', '7B', '5D', '6B', '5E', '1B'], grid:[3, 3], layout:[['2C', '1C', '4B'], ['5C', '7B', '5D'], ['6B', '5E', '1B']], map:'maps/m01.jpg', legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'City Blocks', diff:'Hard', surv:'4+', time:'150 min',
+   intro:'Food is running out. Raid the neighbouring houses for supplies.',
+   tokens:[TOK_XP], total:6,
+   win:[{t:'Take all the Objective tokens', auto:'tokens'},{t:'Find at least 1 Canned Food, 1 Rice and 1 Water'},{t:'Reach the Exit Zone with at least 1 survivor carrying the food'}],
+   lose:[LOSE_ALL],
+   rules:['Each Objective token gives 5 XP to the survivor who takes it.']},
+  {id:'02', equip:["Standard starting equipment", "Medicine cabinet token: the survivor who takes it discards 1 Wounded card"], tiles:['4B', '4E', '1B', '7B', '5D', '6B', '3C', '4C', '2C'], grid:[3, 3], layout:[['4B', '4E', '1B'], ['7B', '5D', '6B'], ['3C', '4C', '2C']], map:'maps/m02.jpg', legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Medicine cabinet'], name:'Y-Zone', diff:'Medium', surv:'4+', time:'60 min',
+   intro:'The resistance is collapsing. Get out before the supplies do.',
+   tokens:[{id:'med', label:'Medicine cabinet (heals 1 wound)', xp:0, heal:true, obj:false}], total:1,
+   win:[{t:'Reach the Exit Zone with at least 1 survivor'}],
+   lose:[LOSE_ALL],
+   rules:['The token is a medicine cabinet: whoever takes it discards a Wounded card. No XP.']},
+  {id:'03', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['2C', '4D', '4B', '5C', '6B', '5F', '1B', '3C', '4E'], grid:[3, 3], layout:[['2C', '4D', '4B'], ['5C', '6B', '5F'], ['1B', '3C', '4E']], map:'maps/m03.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'The 24hrs Race of Zombicity', diff:'Medium', surv:'4+', time:'90 min',
+   intro:'A rest home might hold supplies. The streets around it are swarming.',
+   tokens:[TOK_XP], total:7,
+   win:[{t:'Reach Red Danger Level with at least 1 survivor', auto:'red'}],
+   lose:[LOSE_ALL],
+   rules:['Each Objective token gives 5 XP.','Cars can be used.','Pimpmobile: search once only.','Police car: search repeatedly, drawing until you find a weapon. "Aaahh!" spawns a Walker and ends the search.']},
+  {id:'04', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['3C', '4D', '2C', '5F', '4E', '4B', '2B', '5C'], grid:[4, 2], layout:[['3C', '4D', '2C', '5F'], ['4E', '4B', '2B', '5C']], map:'maps/m04.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'Drive-By Shooting', diff:'Medium', surv:'4+', time:'90 min',
+   intro:'Destroy the nest by the subway entrance.',
+   tokens:[TOK_XP], total:7,
+   win:[{t:'Take all the Objective tokens', auto:'tokens'},{t:'Then put the surviving survivors on a Zombie Spawn Zone with no zombies in it'}],
+   lose:[LOSE_ALL],
+   rules:['Each Objective token gives 5 XP.','Cars, pimpmobile and police car work as in Mission 03.']},
+  {id:'05', equip:["Standard starting equipment"], tiles:['5D', '2C', '1C', '7B', '5C', '6B', '5E', '1B', '4B'], grid:[3, 3], layout:[['5D', '2C', '1C'], ['7B', '5C', '6B'], ['5E', '1B', '4B']], map:'maps/m05.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Big W', diff:'Hard', surv:'6+', time:'180 min',
+   intro:'Scavenge the infested office towers without ringing the dinner bell for the whole city.',
+   tokens:[TOK_XP], total:5,
+   win:[{t:'Take all the Objective tokens', auto:'tokens'}],
+   lose:[LOSE_ALL],
+   rules:['Each Objective token gives 5 XP.','Flavour warning: open one door at a time and keep the noise down.']},
+  {id:'06', equip:["Standard starting equipment", "Supplies: Canned Food, Rice and Water cards go under car tokens (1 Action each to place or take)", "No Searching in the survivors' Starting Zone", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['4C', '2C', '7B', '3C', '1B', '5D'], grid:[3, 2], layout:[['4C', '2C', '7B'], ['3C', '1B', '5D']], map:'maps/m06.jpg', legend:['Player starting area (no Search here)', 'Exit', 'Zombie Spawn Zones', 'Locked doors', 'Smashed doors', 'Cars you can drive'], name:'The Escape', diff:'Hard', surv:'6+', time:'150 min',
+   intro:'Raid the Z-Mart, load the cars, floor it.',
+   tokens:[], total:0,
+   win:[{t:'Place supply cards (Canned Food, Rice, Water) under the car tokens'},{t:'Get the remaining survivors into the cars'},{t:'Drive out of the Exit Zone with 6+ supply cards in total'}],
+   lose:[LOSE_ALL,{t:'Fewer than 6 supply cards can still make it out', guess:true}],
+   rules:['No Objective tokens in this mission.','You cannot Search the survivors\' Starting Zone.','1 Action: put or take 1 Canned Food, Rice or Water under a car token in your zone.','Cars can be used. Pimpmobile once; police car as in Mission 03.']},
+  {id:'07', equip:["Standard starting equipment"], tiles:['3C', '2C', '2B', '4C'], grid:[2, 2], layout:[['3C', '2C'], ['2B', '4C']], map:'maps/m07.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Permanent Noise tokens (Zombie Exit Zones)'], name:'Grindhouse', diff:'Easy', surv:'6+', time:'45 min',
+   intro:'Seal the radioactive hospital before the infected technicians get out.',
+   tokens:[TOK_XP], total:3,
+   win:[{t:'Neutralize every Zombie Spawn Zone'}],
+   lose:[{t:'4 zombies have left the board through the Exit Zones'},LOSE_ALL],
+   rules:['Each Objective token gives 5 XP.','Two Zombie Exit Zones each hold 3 permanent Noise tokens. A zombie reaching one is removed and set aside.','Neutralize a Spawn Zone: 1 Action in it with no zombies. Locked doors don\'t stop it spawning.']},
+  {id:'08', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['2C', '7B', '4B', '1B', '5C', '3C'], grid:[3, 2], layout:[['2C', '7B', '4B'], ['1B', '5C', '3C']], map:'maps/m08.jpg', legend:['Player starting area', 'BUNKER', 'Blue door + blue Objective', 'Green door + green Objective', '5 XP token (not an objective)', 'Zombie Spawn Zones + blue Spawn Zone', 'Locked doors', 'Cars you can drive'], name:'Zombie Police', diff:'Hard', surv:'6+', time:'180 min',
+   intro:'Reach the bunker by the police station. Its entrance is remote-controlled.',
+   tokens:[{id:'blue', label:'Blue Objective (unlocks blue door, activates blue Spawn Zone)', xp:5, obj:true, once:true},
+           {id:'green', label:'Green Objective (unlocks green door)', xp:5, obj:true, once:true},
+           {id:'bonus', label:'"5 XP. Not an objective" token', xp:5, obj:false, once:true}], total:2,
+   win:[{t:'Take the blue Objective', auto:'tok:blue'},{t:'Take the green Objective', auto:'tok:green'},{t:'Clear the bunker zone of zombies'},{t:'Get at least 1 survivor into the bunker'}],
+   lose:[LOSE_ALL],
+   rules:['Blue door stays shut until the blue Objective is taken; taking it activates the blue Spawn Zone.','Green door stays shut until the green Objective is taken.','Each Objective token gives 5 XP. One token is a 5 XP bonus that is not an objective.','Cars, pimpmobile and police car as in Mission 03.']},
+  {id:'09', equip:["Standard starting equipment for the first survivor of each player", "Survivors revealed later arrive with NO equipment", "Cars cannot be driven; police car searching still works as above"], tiles:['1B', '2B', '2C', '7B'], grid:[2, 2], layout:[['1B', '2B'], ['2C', '7B']], map:'maps/m09.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', '4 Objectives (3 neutral, 1 blue-sided)', 'Police car'], name:'Might Makes Right', diff:'Medium', surv:'Special (1–3 players)', time:'90 min',
+   intro:'A radio signal leads you to another group of survivors who need rescuing.',
+   tokens:[{id:'neutral', label:'Neutral Objective (fewest-survivor player reveals a new survivor)', xp:5, obj:true},
+           {id:'blue', label:'Marked (blue-side) Objective (no new survivor)', xp:5, obj:true, once:true}], total:4,
+   win:[{t:'Reveal all 4 Objective tokens', auto:'tokens'},{t:'Leave via the starting area with 4 survivors (1 player), 5 (2 players) or 6 (3 players); you win the moment that many are set aside'}],
+   lose:[LOSE_ALL,{t:'Too few survivors left to meet the head count', guess:true}],
+   rules:['Each player starts with 1 survivor.','3 neutral Objectives and 1 two-sided one (standard/blue).','Tokens go face down at random. Every token gives 5 XP. Neutral: the player with the fewest survivors draws a random new survivor, placed with no equipment where the token was (ties: whoever took it decides).','Cars cannot be used. Police car as in Mission 03.']},
+  {id:'10', equip:["Standard starting equipment"], tiles:['7B', '2B', '5B', '5C'], grid:[2, 2], layout:[['7B', '2B'], ['5B', '5C']], map:'maps/m10.jpg', legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Small Town', diff:'Hard', surv:'4+', time:'120 min',
+   intro:'Explore in widening circles around the hideout while the zombie population peaks.',
+   tokens:[TOK_XP], total:4,
+   win:[{t:'Take all the Objective tokens', auto:'tokens'}],
+   lose:[LOSE_ALL],
+   rules:['Each Objective token gives 5 XP.']}
+];
+let mission=load('mission',{id:'00', total:null, taken:[], win:{}, lose:{}, who:0});
+function curMission(){ return MISSIONS.find(m=>m.id===mission.id)||MISSIONS[0]; }
+function missionTotal(){ const m=curMission(); return mission.total==null ? m.total : mission.total; }
+function objTaken(){ return mission.taken.filter(t=>t.obj).length; }
+function saveMission(){ save('mission',mission); renderMission(); }
+function pickMission(id){
+  if(id===mission.id)return;
+  if((mission.taken.length||Object.values(mission.win).some(Boolean)) && !confirm('Switch mission? Progress on this one will be cleared (survivor XP stays).')){ document.getElementById('missionSel').value=mission.id; return; }
+  mission={id:id, total:null, taken:[], win:{}, lose:{}, who:mission.who||0}; saveMission();
+}
+function resetMission(){
+  if(!confirm('Restart this mission? Clears tokens and checklists. XP already awarded stays on survivors.'))return;
+  mission={id:mission.id, total:mission.total, taken:[], win:{}, lose:{}, who:mission.who||0}; saveMission();
+}
+function chgTotal(d){ mission.total=Math.max(0,Math.min(20,missionTotal()+d)); saveMission(); }
+function setWho(v){ mission.who=+v; save('mission',mission); }
+// Apply an XP change without chgXp's own snapshot (the token action takes one snapshot for itself).
+function tokenXp(si,d){
+  const s=survivors[si]; s.xp=Math.max(0,Math.min(60,s.xp+d));
+  s.spent=Math.min(s.spent, baseActions(s));
+  PICK_LEVELS.forEach(k=>{ if(!reached(s,k)) delete s.picks[k]; });
+}
+function takeToken(tid){
+  const m=curMission(); const tok=m.tokens.find(t=>t.id===tid); if(!tok)return;
+  const live=survivors.map((s,i)=>({s,i})).filter(x=>x.s.wounds<2);
+  let si=-1, sname='(nobody)';
+  if(live.length){ const pick=live.find(x=>x.i===mission.who)||live[0]; si=pick.i; sname=pick.s.name; }
+  snap('Objective token'+(si>=0?' for '+sname:''));
+  const gain=si>=0 ? Math.min(tok.xp||0, 60-survivors[si].xp) : 0;
+  const healed=si>=0 && tok.heal && survivors[si].wounds>0;
+  if(healed) survivors[si].wounds--;
+  if(gain) tokenXp(si,gain);
+  mission.taken.push({tid:tid, label:tok.label.replace(/ \(.*$/,''), obj:!!tok.obj, si:si, name:sname, xp:gain, healed:healed});
+  save('mission',mission); persistSurv();
+  if(gain){ const pend=pendingPicks(survivors[si]); if(pend.length) openSkillPicker(si,pend[0]); }
+}
+function undoToken(){
+  if(!mission.taken.length)return;
+  snap('Undo objective token');
+  const t=mission.taken.pop(); const s=survivors[t.si];
+  if(s && s.name===t.name){ if(t.healed) s.wounds=Math.min(2,s.wounds+1); if(t.xp) tokenXp(t.si,-t.xp); }
+  save('mission',mission); persistSurv();
+}
+function autoState(a){
+  const m=curMission();
+  if(a==='tokens'){ const tot=missionTotal(); return tot>0 && objTaken()>=tot; }
+  if(a==='red') return teamLevel().key==='red' && survivors.some(s=>s.wounds<2);
+  if(a==='allDead') return survivors.length>0 && survivors.every(s=>s.wounds>=2);
+  if(a==='anyDead') return survivors.some(s=>s.wounds>=2);
+  if(a&&a.indexOf('tok:')===0) return mission.taken.some(t=>t.tid===a.slice(4));
+  return false;
+}
+function itemDone(list,kind,i){ const it=list[i]; return it.auto ? autoState(it.auto) : !!mission[kind][i]; }
+function toggleMItem(kind,i){ mission[kind][i]=!mission[kind][i]; saveMission(); }
+function checklistHTML(list,kind){
+  let h='';
+  list.forEach((it,i)=>{
+    const done=itemDone(list,kind,i);
+    const click=it.auto?'':' onclick="toggleMItem(\''+kind+'\','+i+')"';
+    h+='<div class="step'+(kind==='lose'?' lose':'')+(done?' done':'')+(it.auto?' auto':'')+'"'+click+'>'+
+      '<div class="chk">'+(done?(kind==='lose'?'&#10007;':'&#10003;'):'')+'</div>'+
+      '<div><div class="stitle">'+it.t+'</div>'+
+      (it.auto?'<div class="sdesc">Ticks itself from '+(it.auto==='tokens'||it.auto.indexOf('tok:')===0?'the token counter':'the Survivors tab')+'.</div>':'')+
+      (it.guess?'<div class="guess">(a guess: the rulebook doesn\'t say this)</div>':'')+'</div></div>';
+  });
+  return h;
+}
+function mapHTML(m){
+  const [cols,rows]=m.grid;
+  const cells=m.layout ? m.layout.flat() : m.tiles;
+  let g='<div class="tilegrid" style="grid-template-columns:repeat('+(m.layout?m.layout[0].length:cols)+',1fr);">'+cells.map(t=>'<div class="tile">'+t+'</div>').join('')+'</div>';
+  return '<details data-panel="map"><summary>Map &amp; tiles ('+m.tiles.length+' tiles)</summary><div class="body">'+
+    (m.map?'<a href="'+m.map+'" target="_blank" rel="noopener"><img class="mapimg" src="'+m.map+'" alt="Mission '+m.id+' map from the rulebook" loading="lazy"></a>'+
+      '<div class="small" style="text-align:center;margin:2px 0 8px;">Tap the map to open it full size.</div>':'')+
+    '<div class="small" style="margin-bottom:6px;"><b>Tiles needed:</b> '+m.tiles.join(', ')+'</div>'+
+    '<div class="small" style="text-align:center;"><b>Layout:</b> '+rows+' row'+(rows>1?'s':'')+' &times; '+cols+' column'+(cols>1?'s':'')+'</div>'+g+
+    '<div class="small" style="text-align:center;margin-top:4px;">'+(m.layout?'Placement from the top-left. Match each tile\'s rotation to the map picture.':'<span class="guess">(tile positions above are a guess)</span>')+'</div>'+
+    '<div class="small" style="margin-top:8px;"><b>On the map:</b></div><ul>'+m.legend.map(l=>'<li>'+l+'</li>').join('')+'</ul>'+
+    '<div class="small"><b>Goal:</b> '+m.win.map(w=>w.t).join(' &rarr; ')+'</div>'+
+    '</div></details>';
+}
+function renderMission(){
+  const sel=document.getElementById('missionSel');
+  if(!sel.options.length) MISSIONS.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.id+' – '+m.name; sel.appendChild(o); });
+  sel.value=mission.id;
+  const m=curMission();
+  const info=document.getElementById('missionInfo');
+  const wasOpen=info.dataset.mid===m.id ? [...info.querySelectorAll('details')].map(d=>d.open) : [];
+  info.dataset.mid=m.id;
+  info.innerHTML=
+    '<div class="mmeta"><span>'+m.diff+'</span><span>'+m.surv+' survivors</span><span>'+m.time+'</span></div>'+
+    '<div class="small"><i>'+m.intro+'</i></div>'+
+    mapHTML(m)+
+    '<details><summary>Equipment</summary><div class="body"><ul>'+m.equip.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>'+
+      '<div class="small">Standard starting equipment: each survivor gets 1 card, dealt at random from the Fire Axe, Crowbar, Pistol and enough Pans. Set aside Ma\'s Shotgun, Evil Twins, Molotov, Pans and Wounded cards.</div></div></details>'+
+    '<details><summary>Special rules</summary><div class="body"><ul>'+m.rules.map(r=>'<li>'+r+'</li>').join('')+'</ul></div></details>';
+  info.querySelectorAll('details').forEach((d,k)=>{ if(wasOpen[k]) d.open=true; });
+  // tokens
+  const tc=document.getElementById('tokenCard');
+  if(!m.tokens.length){ tc.innerHTML='<h2>Objective Tokens</h2><div class="small">None in this mission. Enjoy the shopping trip.</div>'; }
+  else{
+    const tot=missionTotal(), got=objTaken();
+    const live=survivors.map((s,i)=>({s,i})).filter(x=>x.s.wounds<2);
+    let h='<h2>Objective Tokens</h2>';
+    h+='<div class="tokcount">'+got+' / '+(tot||'?')+'</div>';
+    h+='<div class="row" style="justify-content:center;"><span class="small">Objectives on the map:</span>'+
+       '<div class="numctl"><button onclick="chgTotal(-1)">&minus;</button><span class="nv">'+tot+'</span><button onclick="chgTotal(1)">+</button></div></div>';
+    if(live.length){
+      h+='<div class="row" style="margin-top:10px;"><span class="small">Taken by:</span><select onchange="setWho(this.value)" style="flex:1;">'+
+        live.map(x=>'<option value="'+x.i+'"'+(x.i===mission.who?' selected':'')+'>'+esc(x.s.name)+' ('+x.s.xp+' XP)</option>').join('')+'</select></div>';
+    } else h+='<div class="small" style="margin-top:10px;">Add survivors on the Survivors tab and XP goes straight onto them.</div>';
+    h+='<div class="tokbtns">';
+    m.tokens.forEach(t=>{
+      const used=t.once && mission.taken.some(x=>x.tid===t.id);
+      const full=t.obj && tot>0 && got>=tot;
+      const fx=t.xp?' +'+t.xp+' XP':(t.heal?'':' (no XP)');
+      h+='<button class="btn'+(t.obj?'':' sec')+'"'+((used||full)?' disabled':'')+' onclick="takeToken(\''+t.id+'\')">Take: '+t.label+fx+'</button>';
+      if(t.xpGuess) h+='<div class="guess">(XP for neutral tokens is a guess; the rulebook only promises it for the blue side)</div>';
+    });
+    h+='</div>';
+    if(mission.taken.length){
+      h+='<div class="toklog">'+mission.taken.map((t,i)=>(i+1)+'. '+esc(t.name)+': '+t.label+(t.xp?' (+'+t.xp+' XP)':'')+(t.healed?' (healed)':'')).join('<br>')+'</div>'+
+         '<div class="row" style="justify-content:flex-end;margin-top:6px;"><button class="btn sec" style="padding:6px 10px;font-size:.75rem;" onclick="undoToken()">Undo last</button></div>';
+    }
+    tc.innerHTML=h;
+  }
+  document.getElementById('winCard').innerHTML='<h2>To Win</h2><div class="small" style="margin-bottom:4px;">In order, unless the mission says otherwise.</div>'+checklistHTML(m.win,'win');
+  document.getElementById('loseCard').innerHTML='<h2>You Lose If</h2>'+checklistHTML(m.lose,'lose');
+  const won=m.win.every((_,i)=>itemDone(m.win,'win',i));
+  const lost=m.lose.some((_,i)=>itemDone(m.lose,'lose',i));
+  document.getElementById('missionStatus').innerHTML = lost ? '<div class="mstatus lose">&#9760; Mission failed</div>'
+    : won ? '<div class="mstatus win">&#127942; Mission complete!</div>' : '';
+}
+
 /* ---------- SHARE / QR ---------- */
 function makeQR(url){
   const box=document.getElementById('qrbox'); box.innerHTML='';
@@ -1076,7 +1339,7 @@ function initShare(){
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
 document.body.insertAdjacentHTML('beforeend','<datalist id="skillNamesAll">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>');
-renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded();
+renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
