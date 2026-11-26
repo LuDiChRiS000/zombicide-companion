@@ -186,6 +186,34 @@ details .body li{margin-bottom:4px;}
 
 /* QR */
 #qrbox{background:#fff; padding:14px; border-radius:12px; width:fit-content; margin:14px auto;}
+/* ---- Setup tab, new-game wizard, beginner hints ---- */
+.hint{display:block; position:relative; padding-left:32px !important; background:rgba(242,201,76,.08); border:1px dashed rgba(242,201,76,.45); border-radius:8px; padding:8px 10px; margin:8px 0; font-size:.78rem; line-height:1.45; color:var(--text);}
+.hint::before{content:"\1F4A1"; position:absolute; left:9px; top:8px;}
+body.nohints .hint{display:none;}
+.guessnote{font-style:italic; color:var(--dim); font-size:.9em;}
+.bigbtn{width:100%; font-size:1.05rem; padding:14px;}
+.cardlist{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;}
+.gcard{background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:6px 9px; font-size:.78rem; color:var(--text);}
+.gcard small{display:block; color:var(--dim); font-size:.68rem;}
+.tilegrid{display:grid; gap:4px; margin:8px 0;}
+.tilegrid div{background:var(--panel); border:1px solid var(--border); border-radius:6px; text-align:center; padding:10px 0; font-weight:800; font-size:.9rem;}
+.wiz-steps{display:flex; gap:4px; margin:6px 0 12px;}
+.wiz-steps i{flex:1; height:5px; border-radius:3px; background:var(--panel2);}
+.wiz-steps i.on{background:var(--accent);}
+.pickgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+.pickgrid label{display:flex; gap:8px; align-items:center; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px; font-size:.85rem; cursor:pointer;}
+.pickgrid label small{display:block; color:var(--dim); font-size:.68rem;}
+.dealrow{display:flex; justify-content:space-between; gap:8px; padding:8px 10px; border-radius:8px; background:var(--panel2); margin-bottom:6px; font-size:.88rem;}
+.los{display:grid; grid-template-columns:repeat(5,1fr); gap:3px; max-width:260px; margin:8px auto;}
+.los div{aspect-ratio:1; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:800; color:#fff;}
+.los .st{background:#3a3f4a;} .los .bd{background:#5a4632;}
+.los .seen{background-image:linear-gradient(rgba(39,174,96,.55),rgba(39,174,96,.55));}
+.los .me{background:var(--accent);}
+.los .door{border-bottom:5px solid var(--yellow);} .los .shut{border-top:5px solid var(--red);}
+.loslegend{font-size:.7rem; color:var(--dim); text-align:center;}
+.modal.full{align-items:stretch;}
+.modal.full .sheet{max-height:none; display:flex; flex-direction:column;}
+.wiz-body{flex:1; overflow:auto;}
 .footer-note{font-size:.68rem; color:var(--dim); text-align:center; margin:18px 8px 8px; line-height:1.5;}
 </style>
 </head>
@@ -196,10 +224,82 @@ details .body li{margin-bottom:4px;}
   <div class="sub">1st Edition &bull; unofficial fan-made helper</div>
   <div class="gamebar">
     <button class="btn sec" id="undoBtn" onclick="undo()" disabled>&#8630; Undo</button>
-    <button class="btn sec" onclick="newGame()">&#9851; New game</button>
+    <button class="btn sec" onclick="openWizard()">&#9851; New game</button>
   </div>
 </header>
 <div id="toast"></div>
+
+<!-- ============ SETUP ============ -->
+<div class="screen" id="scr-setup">
+  <div class="card">
+    <h2>New Game</h2>
+    <div id="gameSummary" class="small" style="margin-bottom:10px;"></div>
+    <button class="btn bigbtn" onclick="openWizard()">&#9654; Start a new game</button>
+    <div class="hint">The new-game helper walks you through picking a mission and survivors, laying out the table, and dealing starting gear. It resets the round to 1, clears XP, wounds and inventories, and reshuffles the spawn deck.</div>
+    <label class="row small" style="margin-top:10px; cursor:pointer;"><input type="checkbox" id="hintToggle" onchange="setHints(this.checked)"> Show beginner hints (&#128161;) across the app</label>
+  </div>
+
+  <div class="card">
+    <h2>Setting Up the Table</h2>
+    <div class="small">From the rulebook's Setup section, in order:</div>
+    <div id="setupSteps"></div>
+    <div class="row" style="justify-content:flex-end; margin-top:8px;"><button class="btn sec" style="padding:6px 10px;font-size:.75rem;" onclick="clearSetupTicks()">Clear ticks</button></div>
+  </div>
+
+  <div class="card">
+    <h2>The Cards</h2>
+    <details open><summary>&#128683; Put these aside (NOT in the Equipment deck)</summary><div class="body">
+      <div class="cardlist">
+        <div class="gcard">Ma's Shotgun<small>pimpmobile only</small></div>
+        <div class="gcard">Evil Twins<small>pimpmobile only</small></div>
+        <div class="gcard">Molotov<small>crafted, never searched</small></div>
+        <div class="gcard">All Pans<small>starting gear only</small></div>
+        <div class="gcard">6 Wounded cards<small>for zombie hits</small></div>
+      </div>
+      <ul>
+        <li><b>Pimpmobile cards:</b> the first time anyone Searches a pimpmobile, shuffle Ma's Shotgun and the Evil Twins and draw one at random. Each pimpmobile can only be searched once per game.</li>
+        <li><b>Molotov:</b> made by discarding a Glass Bottle + Gasoline (free, no Action). Then take the Molotov card.</li>
+        <li><b>Pans</b> only enter the game as starting equipment.</li>
+        <li><b>Wounded cards</b> go next to the board. When a zombie hits a survivor, they discard an equipment card of their choice and put a Wounded card in that slot. Two Wounded cards = dead.</li>
+        <li>Also take out <b>one Fire Axe, one Crowbar and one Pistol</b> to deal as starting gear (below).</li>
+      </ul>
+    </div></details>
+    <details><summary>&#127873; Deal starting equipment</summary><div class="body">
+      <ul>
+        <li>Make a small pile of <b>1 Fire Axe + 1 Crowbar + 1 Pistol</b>, plus <b>Pans</b> until there's one card per survivor (e.g. 4 survivors = Axe, Crowbar, Pistol, 1 Pan; 6 survivors = 3 Pans).</li>
+        <li>Shuffle and deal <b>one card to each survivor</b> at random.</li>
+        <li><b>Phil</b> ("Starts with a Pistol") also takes a Pistol from the Equipment deck. Then reshuffle the deck.</li>
+        <li>In the rulebook's words: if there are more survivors than starting weapons, "that's just too bad... everyone else gets a pan."</li>
+        <li>Fewer than 3 survivors? Deal from the shuffled Axe/Crowbar/Pistol and shuffle the leftovers into the Equipment deck. <span class="guessnote">(our guess: the rulebook doesn't say)</span></li>
+        <li>The <b>Tutorial (00)</b> is different: the Pistol, Fire Axe and Crowbar go on <b>top</b> of the Equipment deck instead, so survivors start with Pans only.</li>
+        <li>The Fire Axe and Crowbar open doors. Get one of them to the door you need first!</li>
+      </ul>
+    </div></details>
+    <details><summary>&#127183; Shuffle the two decks</summary><div class="body"><ul>
+      <li><b>Equipment deck</b> (what's left of the 62 equipment cards), face down next to the board. When it runs out, reshuffle the discards, but leave out Wounded, Pans, Molotov and the pimpmobile cards.</li>
+      <li><b>Zombie deck</b> (42 cards), face down. The Spawn tab can stand in for it. When it runs out, reshuffle the discards.</li>
+    </ul></div></details>
+    <details><summary>&#128230; What's in the box</summary><div class="body"><ul>
+      <li>9 double-sided tiles, 6 dice</li>
+      <li>6 survivor ID cards (+ blank backs for your own)</li>
+      <li>62 Equipment, 42 Zombie and 6 Wounded cards</li>
+      <li>12 doors, 18 noise, 10 objective, 6 spawn, 1 exit and 1 first-player token</li>
+      <li>4 car tokens (police car, pimpmobile), 6 XP trackers, 24 skill counters</li>
+      <li>Minis: 40 Walkers, 16 Runners, 8 Fatties, 1 Abomination, 6 survivors</li>
+    </ul></div></details>
+  </div>
+
+  <div class="card">
+    <h2>Your First Round</h2>
+    <ul class="small" style="padding-left:18px; line-height:1.55; margin:6px 0;">
+      <li>Every round goes: <b>Players</b> (each survivor takes 3 actions) &rarr; <b>Zombies</b> (they attack, move, then new ones spawn) &rarr; <b>End</b> (clear noise, pass first-player token). The Turn Guide tab walks you through it.</li>
+      <li>There are no zombies on the board at the start (unless the mission places some). They only appear in the first Zombies' Phase, at the spawn zones.</li>
+      <li>Don't open doors you don't need yet. Opening a building spawns zombies in <b>every room</b> of it.</li>
+      <li>Stick together. You can only trade gear with someone in your zone, and a friend with a melee weapon can clear zombies off you without hitting you.</li>
+      <li>XP comes from kills (1 per zombie, 5 per Abomination) and objectives (usually 5). More XP = more actions and skills, but zombies spawn at the level of whoever has the <b>most</b> XP.</li>
+    </ul>
+  </div>
+</div>
 
 <!-- ============ TURN GUIDE ============ -->
 <div class="screen active" id="scr-guide">
@@ -212,6 +312,8 @@ details .body li{margin-bottom:4px;}
       </div>
     </div>
     <div class="small" style="margin-top:4px;">Danger level = highest-XP living survivor (set on the Survivors tab).</div>
+    <div class="small" id="guideMission" style="margin-top:4px;"></div>
+    <div class="hint" id="guideStartHint">First game? Open the <b>Setup</b> tab (bottom left) and tap <b>Start a new game</b>. It resets the round to 1 and walks you through the table setup.</div>
   </div>
 
   <div class="phasebar" id="phasebar"></div>
@@ -228,6 +330,36 @@ details .body li{margin-bottom:4px;}
       <li><b>Reorganize / trade</b> with one survivor in your zone.</li>
       <li><b>Car:</b> get in/out, change seats, or drive 1&ndash;2 zones (runs over everything: roll 1 die per mini, 4+ hits, 1 damage, ranged priority).</li>
       <li><b>Take/activate objective</b>, <b>make noise</b> (place a noise token), or <b>do nothing</b>.</li>
+    </ul></div></details>
+    <details><summary>Zones &amp; moving</summary><div class="body"><ul>
+      <li>A <b>zone</b> inside a building is one room. On the street, a zone is the stretch between two pedestrian crossings and the building walls (it can run across 2 or 4 tiles).</li>
+      <li>You move to a zone that <b>shares an edge</b> with yours. Never diagonally.</li>
+      <li>Street &harr; building only through an <b>open door</b>. Inside a building, rooms linked by an opening are connected.</li>
+    </ul></div></details>
+    <details><summary>Line of sight (who can see whom)</summary><div class="body">
+      <ul>
+        <li><b>Streets:</b> sight runs in <b>straight lines</b> parallel to the board edges, as many zones as you like, until a wall or the board edge. <b>Never diagonally.</b></li>
+        <li><b>Inside a building:</b> you see the rooms that share an opening with yours, and <b>only 1 zone away</b>.</li>
+        <li><b>Street into a building:</b> any number of street zones in a straight line, but only <b>1 zone</b> into the building.</li>
+        <li><b>Closed doors block sight.</b> Open doors don't.</li>
+        <li>Survivors and zombies in between <b>don't block</b> sight.</li>
+        <li>Zombies use the same rules: if they can see you, they come for you.</li>
+      </ul>
+      <div class="los" aria-label="Line of sight example">
+        <div class="bd">&#10007;</div><div class="bd"></div><div class="st"></div><div class="bd"></div><div class="bd"></div>
+        <div class="bd seen door">&#10003;</div><div class="bd">&#10007;</div><div class="st">&#10007;</div><div class="bd"></div><div class="bd"></div>
+        <div class="st me">YOU</div><div class="st seen">&#10003;</div><div class="st seen">&#10003;</div><div class="st seen">&#10003;</div><div class="st seen">&#10003;</div>
+        <div class="bd shut">&#10007;</div><div class="bd">&#10007;</div><div class="st">&#10007;</div><div class="bd"></div><div class="bd"></div>
+        <div class="bd"></div><div class="bd"></div><div class="st"></div><div class="bd"></div><div class="bd"></div>
+      </div>
+      <div class="loslegend">Grey = street, brown = rooms, green = you can see it. Yellow bar = open door, red bar = closed door.<br>You see the whole street ahead and 1 room through the open door, but not the room behind it, the room behind the closed door, or anything diagonal.</div>
+    </div></details>
+    <details><summary>Range &amp; who gets hit</summary><div class="body"><ul>
+      <li>Range on a weapon card is <b>min&ndash;max zones</b>. <b>0</b> = your own zone (melee). A Rifle at <b>1&ndash;3</b> can't shoot into its own zone; a Sub-MG at <b>0&ndash;1</b> can shoot its own zone or the next one.</li>
+      <li>To shoot, the target zone must be <b>in line of sight</b> and <b>in range</b>. Ignore anyone in the zones in between.</li>
+      <li>Ranged hits go in this order, and the shooter can't choose: <b>1. other Survivors</b> &rarr; <b>2. Walkers</b> &rarr; <b>3. Fatties / Abomination</b> &rarr; <b>4. Runners</b>. Yes, firing into a zone with a friend hits the friend first.</li>
+      <li>Melee attacks and the <b>Sniper Rifle</b> (Rifle + Scope) choose their targets.</li>
+      <li><b>Molotov</b> takes a Ranged action, needs no roll, and kills <b>everything</b> in the zone, survivors and the Abomination included. Discard it after.</li>
     </ul></div></details>
     <details><summary>Weapon damage &amp; XP</summary><div class="body"><ul>
       <li><b>1 damage</b> kills Walkers &amp; Runners (1 XP each).</li>
@@ -267,6 +399,7 @@ details .body li{margin-bottom:4px;}
       <button class="btn sec" onclick="addSurvivor()">Add custom</button>
     </div>
     <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each. Remove anyone not playing with the &#10005; on their panel. Panels are tinted in each survivor's figurine colour; the border shows their danger level.</div>
+    <div class="hint">Tap the round dots to spend actions. A survivor dies at <b>2 wounds</b>, and each wound uses up an inventory slot. Only items in the two <b>Hand</b> slots can be used; moving things between hand and reserve costs an action unless you just Searched.</div>
   </div>
   <div id="survList"></div>
   <div class="row" style="justify-content:center; margin-top:4px;">
@@ -304,6 +437,7 @@ details .body li{margin-bottom:4px;}
       <button class="btn" style="font-size:1.05rem; padding:12px 34px;" onclick="rollDice()">&#127922; ROLL</button>
       <button class="btn sec" id="rerollBtn" style="font-size:.95rem; padding:12px 18px; display:none;" onclick="rollDice(true)">&#8635; Reroll all</button>
     </div>
+    <div class="hint">Read your weapon card: <b>Dice</b> is how many to roll, <b>Accuracy</b> is the number each die needs (e.g. 4+). Every die that makes it is a hit, and each hit deals the card's <b>Damage</b> to one zombie. Walkers and Runners need 1 damage, Fatties 2, the Abomination 3.</div>
     <div class="small" style="text-align:center; margin-top:10px;">Pick a weapon above, or tap one in a survivor's hand on the Survivors tab. You can still tweak dice &amp; accuracy for skills (+1 die, +1 to rolls). Green dice are hits. <b>Reroll all</b> is for Plenty of Ammo or Lucky: the new roll replaces the old one.</div>
   </div>
   <div class="card">
@@ -331,6 +465,7 @@ details .body li{margin-bottom:4px;}
     <div class="row" style="justify-content:center; margin-top:12px;">
       <button class="btn" style="font-size:1.05rem; padding:12px 30px;" onclick="drawSpawn()">Draw Zombie Card</button>
     </div>
+    <div class="hint">Do this in step 2 of the Zombies' Phase. Spawn zones are the zones with spawn tokens on the mission map; draw one card for each, then place the zombies shown on the highlighted line.</div>
     <div id="spawnResult"></div>
     <div class="deckinfo" id="deckInfo"></div>
     <div class="row" style="justify-content:center; margin-top:10px;">
@@ -374,10 +509,12 @@ details .body li{margin-bottom:4px;}
   <div class="footer-note">Unofficial fan-made companion for the Zombicide board game (1st Edition) by Guillotine Games / CMON. Not affiliated with or endorsed by the publishers. Own the game to play!</div>
 </div>
 
+<div class="modal full" id="wizModal"><div class="sheet" id="wizSheet"></div></div>
 <div class="modal" id="giveModal" onclick="if(event.target===this)closeGive()"><div class="sheet" id="giveSheet"></div></div>
 <div class="modal" id="skillModal" onclick="if(event.target===this)closeSkillModal()"><div class="sheet" id="skillSheet"></div></div>
 
 <nav>
+  <button data-scr="setup" onclick="show('setup')"><span class="ico">&#128230;</span>Setup</button>
   <button class="active" data-scr="guide" onclick="show('guide')"><span class="ico">&#128214;</span>Turn Guide</button>
   <button data-scr="surv" onclick="show('surv')"><span class="ico">&#129485;</span>Survivors</button>
   <button data-scr="dice" onclick="show('dice')"><span class="ico">&#127922;</span>Dice</button>
@@ -453,15 +590,15 @@ function updateDangerPill(){
 const PHASES=[
   {name:"Players' Phase", steps:[
     {t:"First player starts", d:"The player holding the first-player token activates their survivors one at a time, in any order. Then play passes left."},
-    {t:"Spend each survivor's actions", d:"3 actions each (4 from Yellow level). Free skill actions don't count. Track them on the Survivors tab."},
-    {t:"Mind the reminders", d:"Only 1 search per survivor per turn. Leaving a zombie zone costs +1 action per zombie. Noisy weapons & door-openings drop noise tokens. Each survivor mini counts as noise."},
+    {t:"Spend each survivor's actions", d:"3 actions each (4 from Yellow level). Free skill actions don't count. Track them on the Survivors tab.", h:"Typical turn: Move toward a building, open its door, Search inside, then fight. You can split your actions however you like, e.g. Move, Move, Search."},
+    {t:"Mind the reminders", d:"Only 1 search per survivor per turn. Leaving a zombie zone costs +1 action per zombie. Noisy weapons & door-openings drop noise tokens. Each survivor mini counts as noise.", h:"Noise attracts zombies that can't see anyone. A noisy weapon (most guns) leaves a token each time it fires, even if it misses."},
     {t:"All players done?", d:"When every player has activated all their survivors, the Players' Phase ends."}
   ]},
   {name:"Zombies' Phase", steps:[
-    {t:"1a. Zombies ATTACK", d:"Every zombie in a zone with a survivor attacks — automatic hit, no roll. Each attack: 1 wound + the survivor discards 1 equipment card of their choice (wound card takes its slot). 2 wounds = dead. All zombies in the zone pile on."},
+    {t:"1a. Zombies ATTACK", d:"Every zombie in a zone with a survivor attacks — automatic hit, no roll. Each attack: 1 wound + the survivor discards 1 equipment card of their choice (wound card takes its slot). 2 wounds = dead. All zombies in the zone pile on.", h:"You pick which survivor takes each hit when several share a zone. Spread wounds so nobody dies, or sacrifice the doomed one."},
     {t:"1b. Zombies MOVE", d:"All zombies that didn't attack move 1 zone toward visible survivors (noisiest group if several) or, if none visible, the noisiest zone. Shortest route; split evenly on ties — add minis to keep groups identical."},
     {t:"1c. Runners go AGAIN", d:"Runners have 2 actions: after everything has activated once, each runner attacks or moves a second time."},
-    {t:"2. SPAWN", d:"Draw one zombie card per spawn zone (same starting zone, clockwise). Read the line for the current danger level — use the Spawn tab. Fatties bring 2 walkers; a 2nd Abomination becomes a Fatty + 2 walkers."}
+    {t:"2. SPAWN", d:"Draw one zombie card per spawn zone (same starting zone, clockwise). Read the line for the current danger level — use the Spawn tab. Fatties bring 2 walkers; a 2nd Abomination becomes a Fatty + 2 walkers.", h:"Spawn zones are the zones with spawn tokens on the mission map. Always start from the same one each round."}
   ]},
   {name:"End Phase", steps:[
     {t:"Remove ALL noise tokens", d:"Clear every noise token from the board."},
@@ -486,7 +623,7 @@ function renderGuide(){
     const key=guide.phase+'_'+i; const done=guide.done[key];
     html+='<div class="step'+(done?' done':'')+'" onclick="toggleStep(\''+key+'\')">'+
       '<div class="chk">'+(done?'&#10003;':'')+'</div>'+
-      '<div><div class="stitle">'+s.t+'</div><div class="sdesc">'+s.d+'</div></div></div>';
+      '<div><div class="stitle">'+s.t+'</div><div class="sdesc">'+s.d+'</div>'+(s.h?'<div class="hint">'+s.h+'</div>':'')+'</div></div>';
   });
   const last = guide.phase===PHASES.length-1;
   html+='<div class="row" style="justify-content:flex-end; margin-top:12px;">'+
@@ -494,6 +631,7 @@ function renderGuide(){
   card.innerHTML=html;
   document.getElementById('roundNum').textContent=guide.round;
   updateDangerPill();
+  if(typeof renderGame==='function') try{ renderGame(); }catch(e){}
 }
 function toggleStep(key){ snap('Tick step'); guide.done[key]=!guide.done[key]; save('guide',guide); renderGuide(); }
 function nextPhase(){
@@ -1335,6 +1473,179 @@ function initShare(){
   }
 }
 
+/* ---------- SETUP TAB + NEW-GAME WIZARD ----------
+   Setup steps paraphrased from the 1st Edition rulebook's #3 Setup section (checked against Chris's PDF). */
+const SETUP_STEP_HELP=[
+  {t:'Choose a mission', d:'Missions 00 (Tutorial) to 10 are in the back of the rulebook. Start with 00 or 01 if you are new.'},
+  {t:'Place the tiles', d:'Lay out the tiles exactly as the mission map shows (tile number and rotation).'},
+  {t:'Place doors, cars and objectives', d:'Doors go where the map shows them, closed unless the map says open. Add car tokens and objective tokens. Spawn tokens and the exit go on the zones the map marks.'},
+  {t:'Set cards aside', d:'Take out the pimpmobile cards (Ma\'s Shotgun, Evil Twins), the Molotov, all Pans and the Wounded cards. Also take one Fire Axe, one Crowbar and one Pistol for the starting deal.'},
+  {t:'Shuffle both decks', d:'Zombie cards in one face-down deck, the remaining Equipment cards in another. Put both next to the board.'},
+  {t:'Pick survivors', d:'1 player runs 4 survivors, 2 players run 3 each, 3 players run 2 each, 4-6 players run 1 each.'},
+  {t:'Place survivor minis', d:'All of them go in the starting zone shown on the mission map.'},
+  {t:'Set up the ID cards', d:'Put an XP tracker on the first blue square of each survivor\'s Danger Bar, and a skill counter on their blue (starting) skill.'},
+  {t:'Deal starting equipment', d:'Shuffle the Fire Axe, Crowbar, Pistol and enough Pans for one card each, and deal one to every survivor. Phil also takes a Pistol from the deck.'},
+  {t:'Pick the first player', d:'Give them the first-player token. Decide together, since it\'s a co-op game. The rulebook says not to pick randomly.'}
+];
+let setupTicks=load('setupTicks',{});
+function renderSetupSteps(){
+  document.getElementById('setupSteps').innerHTML=SETUP_STEP_HELP.map((s,i)=>{
+    const on=!!setupTicks[i];
+    return '<div class="step'+(on?' done':'')+'" onclick="tickSetup('+i+')"><div class="chk">'+(on?'&#10003;':'')+'</div>'+
+      '<div><div class="stitle">'+(i+1)+'. '+s.t+'</div><div class="sdesc">'+s.d+'</div></div></div>';
+  }).join('');
+}
+function tickSetup(i){ setupTicks[i]=!setupTicks[i]; save('setupTicks',setupTicks); renderSetupSteps(); }
+function clearSetupTicks(){ setupTicks={}; save('setupTicks',setupTicks); renderSetupSteps(); }
+
+/* Beginner hints on/off (default on) */
+let hintsOn=load('hints',true);
+function setHints(on){ hintsOn=!!on; save('hints',hintsOn); applyHints(); }
+function applyHints(){ document.body.classList.toggle('nohints',!hintsOn); const t=document.getElementById('hintToggle'); if(t) t.checked=hintsOn; }
+
+function setupMissions(){ return MISSIONS; }
+function missionById(id){ const L=setupMissions(); return L.find(m=>m.id===id)||L[0]; }
+function survPerPlayer(n,mid){ if(mid==='09') return 1; return n===1?4 : n===2?3 : n===3?2 : 1; }
+
+let game=load('game',null); // {mission, players, started}
+let wiz=null;
+function openWizard(){
+  const def=game?game.players:1;
+  wiz={step:0, players:def, mission:game?game.mission:'00', picks:[], custom:'', deal:null, ticks:{}};
+  document.getElementById('wizModal').classList.add('open'); renderWizard();
+}
+function closeWizard(){ document.getElementById('wizModal').classList.remove('open'); wiz=null; }
+const WIZ_TITLES=['Players & mission','Survivors','Lay out the table','Starting equipment','Who goes first?'];
+function wizNeed(){ return wiz.players*survPerPlayer(wiz.players,wiz.mission); }
+function wizTeam(){
+  const out=wiz.picks.map(id=>{ const p=PRESETS.find(x=>x.id===id); return {name:p.name, preset:p.id}; });
+  wiz.custom.split(',').map(t=>t.trim()).filter(Boolean).forEach(n=>out.push({name:n, preset:null}));
+  return out;
+}
+/* Tile grid in placement order: rows x columns, filled left-to-right, top-to-bottom.
+   Uses m.layout (array of rows) if the mission data has one, else m.tiles + m.grid [cols,rows]. */
+function tileGridHtml(m){
+  let rows;
+  if(Array.isArray(m.layout)&&m.layout.length) rows=m.layout;
+  else { const cols=(m.grid&&m.grid[0])||Math.min(3,m.tiles.length); rows=[];
+    for(let i=0;i<m.tiles.length;i+=cols) rows.push(m.tiles.slice(i,i+cols)); }
+  const cols=Math.max(...rows.map(r=>r.length));
+  return '<div class="small">'+rows.length+' row'+(rows.length>1?'s':'')+' &times; '+cols+' column'+(cols>1?'s':'')+'</div>'+
+    '<div class="tilegrid" style="grid-template-columns:repeat('+cols+',1fr);">'+
+    rows.map(r=>{ const c=r.slice(); while(c.length<cols) c.push(''); return c.map(t=>t?'<div>'+esc(t)+'</div>':'<div style="opacity:.25">&ndash;</div>').join(''); }).join('')+'</div>';
+}
+function listHtml(title,arr){
+  if(!arr) return ''; if(!Array.isArray(arr)) arr=[arr]; if(!arr.length) return '';
+  return '<div class="small" style="margin-top:8px;"><b>'+title+'</b><ul>'+arr.map(x=>{ const t=typeof x==='string'?x:(x.t||x.name||''); return '<li>'+esc(t)+(x&&x.guess?' <span class="guessnote">(guess: not stated in the rulebook)</span>':'')+'</li>'; }).join('')+'</ul></div>';
+}
+function missionDetailHtml(m){
+  let h='';
+  const facts=[['Difficulty',m.diff],['Survivors',m.surv],['Duration',m.time]].filter(f=>f[1]);
+  if(facts.length) h+='<div class="cardlist">'+facts.map(f=>'<div class="gcard"><small>'+f[0]+'</small>'+esc(f[1])+'</div>').join('')+'</div>';
+  if(m.intro) h+='<p style="margin:6px 0 8px; font-style:italic;">'+esc(m.intro)+'</p>';
+  h+='<div class="small" style="margin-top:8px;"><b>Tiles needed ('+m.tiles.length+')</b></div>'+tileGridHtml(m)+
+     (m.layout?'<div class="small">Check the rulebook map for each tile\'s rotation.</div>':'<div class="small">Tiles are in the rulebook\'s list order. Check the rulebook map for exact positions and rotation. '+(m.gridConfirmed?'':'<span class="guessnote">(grid layout above is a guess)</span>')+'</div>');
+  if(m.map) h+='<img src="'+esc(m.map)+'" alt="Rulebook map for mission '+esc(m.id)+'" loading="lazy" style="width:100%; border-radius:8px; margin-top:8px;" onerror="this.remove()">';
+  h+=listHtml('Objectives',m.win);
+  h+=listHtml('You lose if',m.lose);
+  h+=listHtml('Special rules',m.rules);
+  h+=listHtml('Equipment & cards',m.equip||m.equipment);
+  if(!m.diff&&!m.intro) h+='<div class="small" style="margin-top:8px;">Full mission details appear here once the Mission tab data is in the app.</div>';
+  return h;
+}
+function renderWizard(){
+  const w=wiz, sh=document.getElementById('wizSheet'); const m=missionById(w.mission);
+  let body='';
+  if(w.step===0){
+    body+='<div class="small">How many people are playing?</div><div class="numctl" style="margin:8px 0 12px;">'+
+      '<button onclick="wizPlayers(-1)">&minus;</button><span class="nv">'+w.players+'</span><button onclick="wizPlayers(1)">+</button></div>'+
+      '<div class="hint">Each player controls '+survPerPlayer(w.players,w.mission)+' survivor'+(survPerPlayer(w.players,w.mission)>1?'s':'')+', so '+wizNeed()+' in total. One person can happily run 4 survivors solo.</div>'+
+      '<div class="small" style="margin-top:10px;">Mission</div>'+
+      '<select style="width:100%; margin:6px 0;" onchange="wiz.mission=this.value; renderWizard();">'+
+        setupMissions().map(x=>'<option value="'+x.id+'"'+(x.id===w.mission?' selected':'')+'>'+x.id+' &ndash; '+esc(x.name)+'</option>').join('')+'</select>'+
+      (w.mission==='00'?'<div class="hint">Mission 00 is the tutorial: two tiles, one objective. Perfect for learning the rules.</div>':'')+
+      (w.mission==='09'?'<div class="hint">In Mission 09 each player starts with just 1 survivor and recruits more by taking objectives.</div>':'')+
+      '<details open><summary>Mission details</summary><div class="body">'+missionDetailHtml(m)+'</div></details>';
+  } else if(w.step===1){
+    const need=wizNeed(), have=wizTeam().length;
+    body+='<div class="small">Pick '+need+' survivor'+(need>1?'s':'')+'. Picked: <b style="color:'+(have===need?'var(--green)':'var(--text)')+'">'+have+'</b></div>'+
+      '<div class="pickgrid" style="margin-top:8px;">'+PRESETS.map(p=>'<label><input type="checkbox" '+(w.picks.includes(p.id)?'checked':'')+' onchange="wizPick(\''+p.id+'\',this.checked)">'+
+        '<span>'+p.name+'<small>'+esc(p.tree.blue[0])+'</small></span></label>').join('')+'</div>'+
+      '<input type="text" style="width:100%; margin-top:10px;" placeholder="Custom survivors, comma separated" value="'+esc(w.custom)+'" onchange="wiz.custom=this.value; renderWizard();">'+
+      '<div class="hint">New players: Wanda (moves 2 zones) and Phil (starts with a Pistol) are forgiving picks. Josh\'s <b>Slippery</b> lets him walk out of zombie zones for free.</div>'+
+      (have!==need?'<div class="small" style="margin-top:6px; color:var(--orange);">The rulebook count is '+need+'. You can go on with '+have+' if you like.</div>':'');
+  } else if(w.step===2){
+    const items=[
+      ['Lay out the tiles','For mission '+m.id+': '+m.tiles.join(', ')+'. Copy the map in the rulebook for positions and rotation.'],
+      ['Doors, cars, objectives, spawn zones, exit','Place them where the map shows. Doors start closed unless the map shows them open.'],
+      ['Set aside','Ma\'s Shotgun, Evil Twins, Molotov, all Pans, the 6 Wounded cards, plus 1 Fire Axe, 1 Crowbar and 1 Pistol for the deal.'],
+      ['Shuffle the Equipment deck and the Zombie deck','Face down next to the board. (The Spawn tab can replace the Zombie deck; it gets reshuffled when you finish.)'],
+      ['Survivor minis in the starting zone','All '+wizTeam().length+' of them.'],
+      ['ID cards ready','XP tracker on the first blue square, skill counter on the blue skill.']
+    ];
+    body+=items.map((it,i)=>{ const on=!!w.ticks[i]; return '<div class="step'+(on?' done':'')+'" onclick="wiz.ticks['+i+']=!wiz.ticks['+i+']; renderWizard();"><div class="chk">'+(on?'&#10003;':'')+'</div><div><div class="stitle">'+it[0]+'</div><div class="sdesc">'+it[1]+'</div></div></div>'; }).join('')+
+      '<details open><summary>Tile layout for '+m.id+'</summary><div class="body">'+tileGridHtml(m)+'</div></details>';
+  } else if(w.step===3){
+    if(!w.deal) wizDeal();
+    body+='<div class="small">Shuffled and dealt at random, one card each. Hand these out from your set-aside pile:</div><div style="margin-top:8px;">'+
+      w.deal.map(d=>'<div class="dealrow"><b>'+esc(d.name)+'</b><span>'+d.cards.map(esc).join(' + ')+'</span></div>').join('')+'</div>'+
+      '<div class="row" style="justify-content:flex-end;"><button class="btn sec" style="padding:6px 10px;font-size:.75rem;" onclick="wizDeal(); renderWizard();">Re-deal</button></div>'+
+      (w.mission==='00'?'<div class="hint">Tutorial rule: the Pistol, Fire Axe and Crowbar go on <b>top</b> of the Equipment deck instead, so the first Searches find them.</div>':'')+
+      (w.deal.length<3&&w.mission!=='00'?'<div class="small">Shuffle the spare starting cards into the Equipment deck. <span class="guessnote">(our guess: the rulebook doesn\'t say what happens to them with fewer than 3 survivors)</span></div>':'')+
+      '<div class="hint">These go in a <b>hand</b> slot, ready to use. The Fire Axe and Crowbar can open doors (Pistol and Pan can\'t). The inventory on the Survivors tab is filled in for you.</div>';
+  } else {
+    body+='<div class="small">Pick who holds the first-player token this round. It passes left each End Phase.</div>'+
+      '<div class="hint">The rulebook says decide together, don\'t pick at random. A good rule of thumb: whoever has the gear for the first job (often the door-opener) goes first.</div>'+
+      '<div class="card" style="margin-top:10px;"><b>Ready to go:</b><ul class="small" style="padding-left:18px;">'+
+        '<li>Mission '+m.id+' &ndash; '+esc(m.name)+'</li><li>'+w.players+' player'+(w.players>1?'s':'')+', '+wizTeam().length+' survivors</li>'+
+        '<li>Round 1, Players\' Phase</li><li>XP, wounds and inventory reset, spawn deck reshuffled</li></ul></div>';
+  }
+  const steps=WIZ_TITLES.map((t,i)=>'<i class="'+(i<=w.step?'on':'')+'"></i>').join('');
+  const last=w.step===WIZ_TITLES.length-1;
+  const canNext=!(w.step===1&&!wizTeam().length);
+  sh.innerHTML='<div class="row" style="justify-content:space-between;"><h2>New game &bull; '+(w.step+1)+'/'+WIZ_TITLES.length+'</h2>'+
+    '<button class="btn sec" style="padding:4px 10px;font-size:.75rem;" onclick="closeWizard()">Cancel</button></div>'+
+    '<div class="wiz-steps">'+steps+'</div><h3 style="margin:0 0 8px;">'+WIZ_TITLES[w.step]+'</h3>'+
+    '<div class="wiz-body">'+body+'</div>'+
+    '<div class="row" style="justify-content:space-between; margin-top:12px;">'+
+      '<button class="btn sec" '+(w.step?'':'style="visibility:hidden"')+' onclick="wiz.step--; renderWizard();">&#9664; Back</button>'+
+      (last?'<button class="btn" onclick="finishWizard()">Start round 1 &#9654;</button>'
+           :'<button class="btn" '+(canNext?'':'disabled style="opacity:.5"')+' onclick="wizNext()">Next &#9654;</button>')+
+    '</div>';
+  sh.scrollTop=0;
+}
+function wizPlayers(d){ wiz.players=Math.max(1,Math.min(6,wiz.players+d)); renderWizard(); }
+function wizPick(id,on){ wiz.picks=wiz.picks.filter(x=>x!==id); if(on) wiz.picks.push(id); wiz.deal=null; renderWizard(); }
+function wizNext(){ if(wiz.step===1) wiz.deal=null; wiz.step++; renderWizard(); }
+function wizDeal(){
+  const team=wizTeam(); const n=team.length;
+  let pile = wiz.mission==='00' ? [] : ['Fire Axe','Crowbar','Pistol'];
+  while(pile.length<n) pile.push('Pan');
+  pile=shuffle(pile).slice(0,n);
+  wiz.deal=team.map((t,i)=>{ const cards=[pile[i]]; const p=t.preset&&PRESETS.find(x=>x.id===t.preset);
+    if(p&&p.tree.blue.includes('Starts with a Pistol')) cards.push('Pistol');
+    return {name:t.name, preset:t.preset, cards:cards}; });
+}
+function finishWizard(){
+  snap('New game');
+  if(!wiz.deal) wizDeal();
+  survivors=wiz.deal.map(d=>{ const s=newSurv(d.name,d.preset); d.cards.forEach((c,k)=>{ s.inv[k]=c; }); return s; });
+  guide={round:1, phase:0, done:{}}; save('guide',guide);
+  game={mission:wiz.mission, players:wiz.players, started:Date.now()}; save('game',game);
+  const mm=missionById(wiz.mission);
+  mission={id:wiz.mission, total:null, taken:[], win:{}, lose:{}, who:0}; save('mission',mission);
+  reshuffleDeck(false); customSlot.clear(); closeSkillModal();
+  persistSurv(); closeWizard(); renderGuide(); renderMission(); renderGame(); show('guide');
+  toast('New game started: round 1');
+}
+function renderGame(){
+  const box=document.getElementById('gameSummary'), gm=document.getElementById('guideMission'), gh=document.getElementById('guideStartHint');
+  if(game){ const m=missionById(game.mission);
+    const txt='Mission '+m.id+' &ndash; '+esc(m.name)+' &bull; '+game.players+' player'+(game.players>1?'s':'');
+    box.innerHTML='Current game: <b style="color:var(--text)">'+txt+'</b>, round '+guide.round+'.'; gm.innerHTML=txt; gh.style.display='none';
+  } else { box.innerHTML='No game started yet.'; gm.innerHTML=''; gh.style.display=''; }
+}
+
 /* ---------- init ---------- */
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
@@ -1343,6 +1654,8 @@ renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
+renderSetupSteps(); applyHints(); renderGame();
+if(!game && !survivors.length && guide.round===1) show('setup');
 document.getElementById('newName').addEventListener('keydown',e=>{ if(e.key==='Enter')addSurvivor(); });
 </script>
 </body>
