@@ -117,6 +117,34 @@ details .body li{margin-bottom:4px;}
 .skillopt b{display:block; font-size:.92rem; margin-bottom:2px;}
 .skillopt span{font-size:.76rem; color:var(--dim); line-height:1.4;}
 .skillopt:active{border-color:var(--accent);}
+.inv .slot select{flex:1; padding:6px 8px; font-size:.85rem; min-width:0;}
+.inv .slotwrap{margin-bottom:7px; border-radius:8px;}
+.inv .slotwrap.drop{outline:2px dashed var(--accent2); outline-offset:2px;}
+.inv .slotwrap.dragging{opacity:.4;}
+.inv .grip{width:26px; min-width:26px; height:32px; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:1.05rem; cursor:grab; touch-action:none; user-select:none; border-radius:6px; background:var(--panel);}
+.inv .grip.off{visibility:hidden;}
+.inv .give{background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 8px; font-size:.72rem; font-weight:700; cursor:pointer; font-family:inherit;}
+.inv .give:disabled{opacity:.35; cursor:default;}
+.inv .wstat{font-size:.68rem; color:var(--dim); margin:-2px 0 0 92px;}
+.dragghost{position:fixed; z-index:200; pointer-events:none; background:var(--accent); color:#fff; font-weight:800; font-size:.85rem; padding:6px 12px; border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,.5); transform:translate(-50%,-120%);}
+.hands{display:flex; gap:8px; margin-top:10px;}
+.hand{flex:1; min-width:0; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:7px 9px; text-align:left; color:var(--text); font-family:inherit; cursor:pointer;}
+.hand.armed{border-color:var(--accent);}
+.hand:disabled{cursor:default; opacity:.6;}
+.hand .hl{font-size:.6rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);}
+.hand .hn{font-weight:800; font-size:.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.hand .hs{font-size:.68rem; color:var(--dim);}
+.wguess{color:var(--dim); font-size:.85em; font-weight:400; font-style:italic; white-space:nowrap;}
+.loaded{background:var(--panel2); border:1px solid var(--accent); border-radius:10px; padding:10px 12px; margin-bottom:6px;}
+.loaded .ln{font-weight:900; font-size:1rem;}
+.loaded .lx{font-size:.76rem; color:var(--dim); margin-top:3px; line-height:1.45;}
+.cattbl{width:100%; border-collapse:collapse; font-size:.74rem;}
+.cattbl th{text-align:left; color:var(--dim); font-weight:700; padding:4px 3px; border-bottom:1px solid var(--border); text-transform:uppercase; font-size:.6rem;}
+.cattbl .wguess{display:block; white-space:normal;}
+.cattbl td:last-child .wguess{display:inline;}
+.cattbl td{padding:5px 3px; border-bottom:1px solid var(--border); vertical-align:top; color:var(--text);}
+.cattbl td.n{font-weight:700;}
+.cattbl tr.grp td{color:var(--accent2); font-weight:800; text-transform:uppercase; font-size:.66rem; padding-top:10px;}
 .deadband{margin-top:8px; color:var(--red); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:.85rem;}
 
 /* Dice */
@@ -233,6 +261,12 @@ details .body li{margin-bottom:4px;}
 <div class="screen" id="scr-dice">
   <div class="card">
     <h2>Dice Roller</h2>
+    <div class="row" style="margin-bottom:8px;">
+      <select id="wpnPick" onchange="pickWeapon(this.value)" style="flex:1; min-width:0;"></select>
+      <select id="modePick" onchange="setMode(this.value)" style="display:none;"></select>
+      <label class="small" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="dualChk" onchange="setDual(this.checked)">Dual</label>
+    </div>
+    <div id="loadedBox"></div>
     <div class="row" style="justify-content:space-around; margin:10px 0;">
       <div style="text-align:center;">
         <div class="small" style="margin-bottom:6px;">DICE</div>
@@ -251,8 +285,14 @@ details .body li{margin-bottom:4px;}
     <div class="diceres" id="diceRes"></div>
     <div class="row" style="justify-content:center; margin-top:10px;">
       <button class="btn" style="font-size:1.05rem; padding:12px 34px;" onclick="rollDice()">&#127922; ROLL</button>
+      <button class="btn sec" id="rerollBtn" style="font-size:.95rem; padding:12px 18px; display:none;" onclick="rollDice(true)">&#8635; Reroll all</button>
     </div>
-    <div class="small" style="text-align:center; margin-top:10px;">Set dice &amp; accuracy from your weapon card. Green dice are hits. Remember: <b>Plenty of Ammo</b> lets you reroll once; <b>+1 die/+1 to rolls</b> skills apply too.</div>
+    <div class="small" style="text-align:center; margin-top:10px;">Pick a weapon above, or tap one in a survivor's hand on the Survivors tab. You can still tweak dice &amp; accuracy for skills (+1 die, +1 to rolls). Green dice are hits. <b>Reroll all</b> is for Plenty of Ammo or Lucky: the new roll replaces the old one.</div>
+  </div>
+  <div class="card">
+    <h2>Equipment Catalogue</h2>
+    <div class="small">1st Edition (Season 1 core box). Checked against the rulebook and photos of the real cards. Anything marked <i class="wguess">(guess)</i> hasn't been checked yet &mdash; trust your cards over this table.</div>
+    <details><summary>Show all equipment</summary><div class="body" id="catBody"></div></details>
   </div>
 </div>
 
@@ -300,6 +340,7 @@ details .body li{margin-bottom:4px;}
   <div class="footer-note">Unofficial fan-made companion for the Zombicide board game (1st Edition) by Guillotine Games / CMON. Not affiliated with or endorsed by the publishers. Own the game to play!</div>
 </div>
 
+<div class="modal" id="giveModal" onclick="if(event.target===this)closeGive()"><div class="sheet" id="giveSheet"></div></div>
 <div class="modal" id="skillModal" onclick="if(event.target===this)closeSkillModal()"><div class="sheet" id="skillSheet"></div></div>
 
 <nav>
@@ -333,7 +374,7 @@ function undo(){
   const st=JSON.parse(top.state);
   survivors=st.survivors; guide=st.guide; deck=st.deck; discard=st.discard; lastCard=st.lastCard;
   save('survivors',survivors); save('guide',guide); save('deck',deck); save('discard',discard); save('lastCard',lastCard); save('undo',undoStack);
-  closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); updateUndoBtn();
+  customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); updateUndoBtn();
   toast('Undone: '+top.label);
 }
 function newGame(){
@@ -341,7 +382,7 @@ function newGame(){
   snap('New game');
   survivors=PRESETS.map(p=>presetSurv(p)); guide={round:1, phase:0, done:{}};
   save('survivors',survivors); save('guide',guide);
-  reshuffleDeck(false); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); show('surv');
+  reshuffleDeck(false); customSlot.clear(); closeSkillModal(); renderGuide(); renderSurv(); renderPresetSelect(); show('surv');
   toast('New game started');
 }
 
@@ -428,6 +469,100 @@ function resetRound(confirmIt){
   if(confirmIt && !confirm('Reset checkboxes for this round?'))return;
   snap('Restart round');
   guide.phase=0; guide.done={}; save('guide',guide); renderGuide();
+}
+
+/* ---------- EQUIPMENT CATALOGUE (1st Edition / Season 1 core) ----------
+   Sources: Chris's photo of his cards (Pan, Katana, Shotgun, Baseball Bat,
+   Sawed Off, Evil Twins, Ma's Shotgun, Fire Axe, Flashlight, both Plenty of
+   Ammo) and the Season 1 rulebook (Pistol, Crowbar, Rifle, Fire Axe cards plus
+   examples for Sub MG, Machete, Chainsaw, Sniper Rifle, Molotov, Goalie Mask).
+   `ok` lists the confirmed fields ('all' = whole card); every other field shows
+   "(guess)" in the UI.
+   r=[min,max] range, d=dice, a=accuracy (hit on a+), dmg=damage,
+   door: 'quiet'|'noisy'|null, loud=attack makes noise, ammo: light|heavy (Plenty of Ammo),
+   modes: alternative stat sets on one card (first one is the default) */
+const EQUIP=[
+  // Melee
+  {n:'Axe',          k:'melee',  r:[0,0], d:1, a:4, dmg:2, door:'quiet', ok:['r']},
+  {n:'Baseball Bat', k:'melee',  r:[0,0], d:1, a:3, dmg:1, ok:'all'},
+  {n:'Chainsaw',     k:'melee',  r:[0,0], d:5, a:5, dmg:2, door:'noisy', loud:true, ok:['r','door','loud']},
+  {n:'Crowbar',      k:'melee',  r:[0,0], d:1, a:4, dmg:1, door:'quiet', ok:'all'},
+  {n:'Fire Axe',     k:'melee',  r:[0,0], d:1, a:4, dmg:2, door:'noisy', ok:'all'},
+  {n:'Katana',       k:'melee',  r:[0,0], d:2, a:4, dmg:1, ok:'all'},
+  {n:'Machete',      k:'melee',  r:[0,0], d:1, a:4, dmg:2, dual:true, ok:['r','d','dmg','dual']},
+  {n:'Pan',          k:'melee',  r:[0,0], d:1, a:6, dmg:1, ok:'all'},
+  // Ranged
+  {n:'Pistol',       k:'ranged', r:[0,1], d:1, a:4, dmg:1, dual:true, loud:true, ammo:'light', ok:'all'},
+  {n:'Evil Twins',   k:'ranged', r:[0,1], d:2, a:4, dmg:1, loud:true, ammo:'light', note:'Counts as a single weapon (not dual). Found in a pimp mobile', ok:'all'},
+  {n:"Ma's Shotgun", k:'ranged', r:[0,1], d:2, a:3, dmg:2, loud:true, ammo:'heavy', reload:true, note:'Gun or blade, your pick each attack. Found in a pimp mobile', ok:'all',
+     modes:{Gun:{}, Blade:{r:[0,0], d:1, loud:false, ammo:null}}},
+  {n:'Rifle',        k:'ranged', r:[1,3], d:1, a:3, dmg:1, loud:true, ammo:'light', note:'+ Scope = Sniper Rifle', ok:'all'},
+  {n:'Sawed-Off',    k:'ranged', r:[0,1], d:2, a:3, dmg:1, dual:true, loud:true, ammo:'heavy', reload:true, ok:'all'},
+  {n:'Shotgun',      k:'ranged', r:[0,1], d:2, a:4, dmg:2, loud:true, ammo:'heavy', ok:'all'},
+  {n:'Sub-MG',       k:'ranged', r:[0,1], d:3, a:5, dmg:1, dual:true, loud:true, ok:['r','d','dmg','dual','loud']},
+  // Combos
+  {n:'Sniper Rifle', k:'combo',  r:[1,3], d:1, a:3, dmg:1, loud:true, ammo:'light', note:'Rifle + Scope (no action to combine). Same stats as the Rifle, but you choose targets freely', ok:'all'},
+  {n:'Molotov',      k:'combo',  r:[1,2], molotov:true, loud:true, note:'Glass Bottle + Gasoline (no action to combine). Kills EVERYTHING in the target zone, survivors and Abomination included, then discard', ok:['note']},
+  // Other
+  {n:'Plenty of Ammo (light)', k:'item', note:'Reroll all dice of a ranged action once with the Pistol(s), Evil Twins or Rifle. The new result replaces the old one', ok:'all'},
+  {n:'Plenty of Ammo (heavy)', k:'item', note:'Reroll all dice of a ranged action once with the Sawed-Off(s), Shotgun or Ma\'s Shotgun. The new result replaces the old one', ok:'all'},
+  {n:'Goalie Mask',  k:'item', note:'Discard it to prevent one wound', ok:'all'},
+  {n:'Flashlight',   k:'item', note:'Pick one extra card when searching. Works even in reserve', ok:'all'},
+  {n:'Scope',        k:'item', note:'Combine with a Rifle', ok:'all'},
+  {n:'Gasoline',     k:'item', note:'Combine with a Glass Bottle', ok:'all'},
+  {n:'Glass Bottle', k:'item', note:'Combine with Gasoline', ok:'all'},
+  {n:'Canned Food',  k:'item', note:'Food (some missions)', ok:'all'},
+  {n:'Rice',         k:'item', note:'Food (some missions)', ok:'all'},
+  {n:'Water',        k:'item', note:'Food (some missions)', ok:'all'},
+  {n:'Wounded',      k:'item', note:'Takes up a slot. A second wound eliminates the survivor', ok:'all'}
+];
+const KINDS=[['melee','Melee'],['ranged','Ranged'],['combo','Combos'],['item','Other']];
+const RENAMED={'Bag of Rice':'Rice','Wound':'Wounded'};
+function eq(name){ name=RENAMED[name]||name; return EQUIP.find(e=>e.n===name)||null; }
+function isWeapon(e){ return !!e && (e.d>0 || e.molotov); }
+function q(e,f){ return e.ok==='all' || (e.ok&&e.ok.includes(f)) ? '' : ' <i class="wguess">(guess)</i>'; }
+function rangeTxt(e){ return e.r[0]===e.r[1]? ''+e.r[0] : e.r[0]+'-'+e.r[1]; }
+function modeList(e){ return e.modes?Object.keys(e.modes):null; }
+function withMode(e,m){ return e&&e.modes ? Object.assign({},e,e.modes[m]||e.modes[modeList(e)[0]]) : e; }
+/* "Gun 0-1 / Blade 0" style text for cards with several stat sets */
+function perMode(e,fn){ return e.modes ? modeList(e).map(m=>m+' '+fn(withMode(e,m))).join(' / ') : fn(e); }
+function statLine(e){
+  if(!isWeapon(e)) return e.note||'';
+  if(e.molotov) return 'R'+rangeTxt(e)+q(e,'r')+' &middot; kills all in zone';
+  return 'R'+perMode(e,rangeTxt)+q(e,'r')+' &middot; '+perMode(e,x=>x.d+'d')+q(e,'d')+' '+e.a+'+'+q(e,'a')+' &middot; Dmg '+e.dmg+q(e,'dmg')+(e.dual?' &middot; dual'+q(e,'dual'):'');
+}
+function killsTxt(dmg){
+  return dmg>=3 ? 'kills anything, Abomination included' : dmg===2 ? 'kills Walkers, Runners &amp; Fatties' : 'kills Walkers &amp; Runners only (bounces off Fatties)';
+}
+function equipOptions(cur, weaponsOnly){
+  let h='', found=!cur;
+  KINDS.forEach(([k,lab])=>{
+    const list=EQUIP.filter(e=>e.k===k && (!weaponsOnly||isWeapon(e)));
+    if(!list.length)return;
+    h+='<optgroup label="'+lab+'">';
+    list.forEach(e=>{ const sel=e.n===cur; if(sel)found=true; h+='<option value="'+esc(e.n)+'"'+(sel?' selected':'')+'>'+esc(e.n)+'</option>'; });
+    h+='</optgroup>';
+  });
+  return {html:h, found:found};
+}
+function renderCatalogue(){
+  let h='<table class="cattbl"><tr><th>Item</th><th>Rng</th><th>Dice</th><th>Acc</th><th>Dmg</th><th>Notes</th></tr>';
+  KINDS.forEach(([k,lab])=>{
+    h+='<tr class="grp"><td colspan="6">'+lab+'</td></tr>';
+    EQUIP.filter(e=>e.k===k).forEach(e=>{
+      const notes=[];
+      if(e.dual)notes.push('Dual'+q(e,'dual'));
+      if(e.door)notes.push((e.door==='noisy'?'Noisy door':'Opens doors')+q(e,'door'));
+      if(e.loud&&e.k==='melee')notes.push('Noisy'+q(e,'loud'));
+      if(e.modes)notes.push('Blade is silent');
+      if(e.reload)notes.push('1 action to reload, free in End Phase');
+      if(e.ammo)notes.push((e.ammo==='light'?'Light ammo':'Heavy ammo')+q(e,'ammo'));
+      if(e.note)notes.push(esc(e.note)+q(e,'note'));
+      const w=isWeapon(e)&&!e.molotov;
+      h+='<tr><td class="n">'+esc(e.n)+'</td><td>'+(e.r?perMode(e,rangeTxt)+q(e,'r'):'')+'</td><td>'+(w?perMode(e,x=>''+x.d)+q(e,'d'):'')+'</td><td>'+(w?e.a+'+'+q(e,'a'):'')+'</td><td>'+(w?e.dmg+q(e,'dmg'):'')+'</td><td>'+notes.join('. ')+'</td></tr>';
+    });
+  });
+  document.getElementById('catBody').innerHTML=h+'</table><div class="small" style="margin-top:8px;">Ranged weapons are noisy; melee weapons are silent unless noted. Light Plenty of Ammo covers Pistol, Evil Twins and Rifle; heavy covers Sawed-Off, Shotgun and Ma\'s Shotgun.</div>';
 }
 
 /* ---------- SURVIVORS ---------- */
@@ -611,7 +746,86 @@ function skillsBlock(s,i){
 function toggleWound(i,w){ const s=survivors[i]; snap('Wound on '+s.name); s.wounds = (s.wounds>w)? w : w+1; persistSurv(); }
 function togglePip(i,p){ const s=survivors[i]; snap('Action for '+s.name); s.spent = (s.spent>p)? p : p+1; persistSurv(); }
 function setInv(i,slot,val){ snap('Inventory for '+survivors[i].name); survivors[i].inv[slot]=val; save('survivors',survivors); }
-function removeSurv(i){ if(confirm('Remove '+survivors[i].name+'?')){ snap('Remove '+survivors[i].name); survivors.splice(i,1); persistSurv(); } }
+const customSlot=new Set();
+/* --- reorganize: drag a slot's grip onto another slot of the same survivor to swap (free) --- */
+let drag=null;
+function dragStart(ev,i,k){
+  if(!survivors[i].inv[k])return;
+  ev.preventDefault();
+  const src=ev.target.closest('.slotwrap'); src.classList.add('dragging');
+  const g=document.createElement('div'); g.className='dragghost'; g.textContent=survivors[i].inv[k]; document.body.appendChild(g);
+  drag={i:i,k:k,src:src,ghost:g,over:null};
+  dragMove(ev);
+  window.addEventListener('pointermove',dragMove); window.addEventListener('pointerup',dragEnd); window.addEventListener('pointercancel',dragEnd);
+}
+function dragMove(ev){
+  if(!drag)return;
+  drag.ghost.style.left=ev.clientX+'px'; drag.ghost.style.top=ev.clientY+'px';
+  const el=document.elementFromPoint(ev.clientX,ev.clientY);
+  const t=el&&el.closest('.slotwrap');
+  const ok=t && +t.dataset.surv===drag.i && t!==drag.src ? t : null;
+  if(drag.over&&drag.over!==ok) drag.over.classList.remove('drop');
+  if(ok) ok.classList.add('drop');
+  drag.over=ok;
+}
+function dragEnd(){
+  if(!drag)return;
+  window.removeEventListener('pointermove',dragMove); window.removeEventListener('pointerup',dragEnd); window.removeEventListener('pointercancel',dragEnd);
+  drag.ghost.remove(); drag.src.classList.remove('dragging');
+  const d=drag; drag=null;
+  if(d.over){ d.over.classList.remove('drop'); swapSlots(d.i,d.k,+d.over.dataset.slot); }
+}
+function swapSlots(i,a,b){
+  snap('Reorganize '+survivors[i].name); const inv=survivors[i].inv; [inv[a],inv[b]]=[inv[b],inv[a]];
+  customSlot.delete(i+'_'+a); customSlot.delete(i+'_'+b);
+  persistSurv();
+}
+/* --- give / trade: costs the giver 1 action; receiver picks a slot (an occupied slot swaps items back) --- */
+let give=null;
+const SLOT_TAGS=['Hand 1','Hand 2','Reserve','Reserve','Reserve'];
+function openGive(i,k){ give={i:i,k:k,to:null}; renderGive(); document.getElementById('giveModal').classList.add('open'); }
+function closeGive(){ give=null; document.getElementById('giveModal').classList.remove('open'); }
+function renderGive(){
+  const from=survivors[give.i], item=from.inv[give.k], left=baseActions(from)-from.spent;
+  let h='<h2>Give '+esc(item)+'</h2>';
+  if(left<=0){
+    h+='<div class="small">'+esc(from.name)+' has no actions left this round. Trading costs 1 action.</div><button class="btn sec" style="margin-top:12px;" onclick="closeGive()">Close</button>';
+  } else if(give.to===null){
+    h+='<div class="small">Costs '+esc(from.name)+' <b>1 action</b> ('+left+' left). Only to a survivor in the <b>same zone</b>. Both survivors may then reorganize their own inventory for free.</div>';
+    survivors.forEach((s,j)=>{
+      if(j===give.i)return;
+      const dead=s.wounds>=2, free=s.inv.filter(x=>!x).length;
+      h+='<button class="skillopt"'+(dead?' disabled style="opacity:.4"':'')+' onclick="giveTo('+j+')"><b>'+esc(s.name)+'</b><span>'+(dead?'Eliminated':free+' empty slot'+(free===1?'':'s')+(free?'':' &middot; pick an item to swap'))+'</span></button>';
+    });
+    h+='<button class="btn sec" style="margin-top:12px;" onclick="closeGive()">Cancel</button>';
+  } else {
+    const to=survivors[give.to];
+    h+='<div class="small">Which of '+esc(to.name)+'\'s slots? Picking an occupied slot swaps: that item goes back to '+esc(from.name)+'.</div>';
+    to.inv.forEach((x,k)=>{
+      h+='<button class="skillopt" onclick="giveSlot('+k+')"><b>'+SLOT_TAGS[k]+'</b><span>'+(x?'Swap for '+esc(x):'Empty')+'</span></button>';
+    });
+    h+='<button class="btn sec" style="margin-top:12px;" onclick="give.to=null;renderGive()">Back</button>';
+  }
+  document.getElementById('giveSheet').innerHTML=h;
+}
+function giveTo(j){ give.to=j; renderGive(); }
+function giveSlot(k){
+  const from=survivors[give.i], to=survivors[give.to];
+  snap('Give '+from.inv[give.k]+' to '+to.name);
+  const item=from.inv[give.k]; from.inv[give.k]=to.inv[k]||''; to.inv[k]=item;
+  from.spent=Math.min(baseActions(from),from.spent+1);
+  customSlot.delete(give.i+'_'+give.k); customSlot.delete(give.to+'_'+k);
+  closeGive(); persistSurv();
+}
+function pickInv(i,slot,val){
+  const key=i+'_'+slot;
+  snap('Inventory for '+survivors[i].name);
+  if(val==='__custom'){ customSlot.add(key); survivors[i].inv[slot]=''; }
+  else { customSlot.delete(key); survivors[i].inv[slot]=val; }
+  persistSurv();
+  if(val==='__custom'){ const el=document.getElementById('cust_'+key); if(el)el.focus(); }
+}
+function removeSurv(i){ if(confirm('Remove '+survivors[i].name+'?')){ snap('Remove '+survivors[i].name); survivors.splice(i,1); customSlot.clear(); persistSurv(); } }
 function resetAllActions(noSnap){ if(!noSnap) snap('Refresh actions'); survivors.forEach(s=>s.spent=0); persistSurv(); }
 /* Remember which panels are open per survivor, so re-rendering (XP, wounds, actions) doesn't collapse them */
 const openPanels=new WeakMap();
@@ -635,7 +849,26 @@ function renderSurv(){
     let inv='';
     const tags=['Hand 1','Hand 2','Reserve','Reserve','Reserve'];
     for(let k=0;k<5;k++){
-      inv+='<div class="slot"><span class="tag">'+tags[k]+'</span><input type="text" placeholder="empty" value="'+esc(s.inv[k])+'" onchange="setInv('+i+','+k+',this.value)"></div>';
+      const cur=s.inv[k]||'', key=i+'_'+k, e=eq(cur);
+      const opts=equipOptions(cur,false);
+      const custom=customSlot.has(key) || (cur && !opts.found);
+      inv+='<div class="slotwrap" data-surv="'+i+'" data-slot="'+k+'"><div class="slot">'+
+        '<span class="grip'+(cur?'':' off')+'" title="Drag to another slot" onpointerdown="dragStart(event,'+i+','+k+')">&#8942;&#8942;</span>'+
+        '<span class="tag">'+tags[k]+'</span>'+
+        '<select onchange="pickInv('+i+','+k+',this.value)">'+
+          '<option value=""'+(!cur&&!custom?' selected':'')+'>&mdash; empty &mdash;</option>'+opts.html+
+          '<option value="__custom"'+(custom?' selected':'')+'>Other (type it)&hellip;</option></select>'+
+        '<button class="give" onclick="openGive('+i+','+k+')"'+(cur&&!dead&&survivors.length>1?'':' disabled')+' title="Give to a survivor in your zone (1 action)">Give</button></div>'+
+        (custom?'<div class="slot"><span class="grip off"></span><span class="tag"></span><input type="text" id="cust_'+key+'" placeholder="card name" value="'+esc(cur)+'" onchange="setInv('+i+','+k+',this.value)"></div>':'')+
+        (e?'<div class="wstat">'+statLine(e)+'</div>':'')+'</div>';
+    }
+    let hands='';
+    for(let k=0;k<2;k++){
+      const e=eq(s.inv[k]); const w=isWeapon(e);
+      hands+='<button class="hand'+(w?' armed':'')+'"'+(w?' onclick="loadFromHand('+i+','+k+')"':' disabled')+'>'+
+        '<div class="hl">Hand '+(k+1)+(w?' &middot; tap to roll &#127922;':'')+'</div>'+
+        '<div class="hn">'+(s.inv[k]?esc(s.inv[k]):'<span style="color:var(--dim)">empty</span>')+'</div>'+
+        (e&&w?'<div class="hs">'+statLine(e)+'</div>':'')+'</button>';
     }
     div.innerHTML=
       '<div class="surv-head"><span class="name">'+(fig?'<span class="swatch"></span>':'')+esc(s.name)+'</span>'+
@@ -650,6 +883,7 @@ function renderSurv(){
         '<div class="stat" style="flex:0 0 auto;"><div class="lbl">Wounds</div><div class="woundbox">'+wounds+'</div></div>'+
       '</div>'+
       skillsBlock(s,i)+
+      '<div class="hands">'+hands+'</div>'+
       '<details class="inv" data-panel="inv"><summary>Inventory (5 slots, wounds take slots)</summary><div class="body">'+inv+'</div></details>';
     if(!openPanels.has(s)) openPanels.set(s,new Set());
     const op=openPanels.get(s);
@@ -665,13 +899,65 @@ function renderSurv(){
 let diceN=load('diceN',3), accN=load('accN',4);
 function chgDice(d){ diceN=Math.max(1,Math.min(12,diceN+d)); save('diceN',diceN); document.getElementById('diceN').textContent=diceN; }
 function chgAcc(d){ accN=Math.max(2,Math.min(6,accN+d)); save('accN',accN); document.getElementById('accN').textContent=accN; }
+/* loaded weapon: {name, dual, who} */
+let wpn=load('wpn',null), rerolls=0;
+function curWpn(){ return wpn && withMode(eq(wpn.name),wpn.mode); }
+function applyWeapon(){
+  const e=curWpn();
+  if(e && !e.molotov){
+    diceN=Math.min(12,e.d*(wpn.dual?2:1)); accN=e.a;
+    save('diceN',diceN); save('accN',accN);
+    document.getElementById('diceN').textContent=diceN;
+    document.getElementById('accN').textContent=accN;
+  }
+  save('wpn',wpn);
+  document.getElementById('diceWrap').innerHTML=''; document.getElementById('diceRes').innerHTML='';
+  document.getElementById('rerollBtn').style.display='none'; rerolls=0;
+  renderLoaded();
+}
+function pickWeapon(name){
+  wpn = name ? {name:name, dual:false, who:null} : null;
+  applyWeapon();
+}
+function setMode(m){ if(!curWpn())return; wpn.mode=m; applyWeapon(); }
+function setDual(on){ if(!curWpn())return; wpn.dual=on && !!curWpn().dual; applyWeapon(); }
+function loadFromHand(i,k){
+  const s=survivors[i], e=eq(s.inv[k]); if(!isWeapon(e))return;
+  wpn={name:e.n, dual:!!e.dual && s.inv[1-k]===e.n, who:s.name};
+  applyWeapon(); show('dice');
+}
+function renderLoaded(){
+  const e=curWpn();
+  document.getElementById('wpnPick').innerHTML='<option value="">Manual (no weapon)</option>'+equipOptions(e?e.n:'',true).html;
+  const dc=document.getElementById('dualChk');
+  dc.checked=!!(wpn&&wpn.dual); dc.disabled=!(e&&e.dual);
+  const mp=document.getElementById('modePick'), ml=e&&modeList(e);
+  mp.style.display=ml?'':'none';
+  if(ml) mp.innerHTML=ml.map(m=>'<option'+(m===(wpn.mode||ml[0])?' selected':'')+'>'+m+'</option>').join('');
+  const box=document.getElementById('loadedBox');
+  if(!e){ box.innerHTML=''; return; }
+  let x;
+  if(e.molotov) x='Range '+rangeTxt(e)+q(e,'r')+'. No roll needed: <b>everything</b> in the target zone dies, survivors included. Discard it after. Noisy.';
+  else x='Range '+rangeTxt(e)+q(e,'r')+' &middot; '+e.d+' di'+(e.d>1?'ce':'e')+q(e,'d')+(wpn.dual?' &times; 2':'')+' at '+e.a+'+'+q(e,'a')+' &middot; Damage '+e.dmg+q(e,'dmg')+' ('+killsTxt(e.dmg)+')'+
+      (e.loud?'. Noisy':'. Silent')+q(e,'loud')+(e.reload?'. 1 action to reload, free in End Phase':'')+
+      (e.ammo?'. Plenty of Ammo ('+e.ammo+') lets you reroll'+q(e,'ammo'):'')+(e.note?'. '+esc(e.note)+q(e,'note'):'')+'.';
+  box.innerHTML='<div class="loaded"><div class="ln">'+(wpn.dual?'Dual ':'')+esc(e.n)+(e.modes?' ('+(wpn.mode||modeList(e)[0])+')':'')+(wpn.who?' <span class="small">&middot; '+esc(wpn.who)+'</span>':'')+'</div><div class="lx">'+x+'</div></div>';
+}
 let rolling=false;
-function rollDice(){
-  if(rolling)return; rolling=true;
+function rollDice(isReroll){
+  if(rolling)return;
+  const e=curWpn();
+  if(e&&e.molotov){ document.getElementById('diceRes').innerHTML='<span style="color:var(--orange)">&#128293; No dice. The whole zone burns.</span>'; return; }
+  rolling=true;
+  rerolls=isReroll?rerolls+1:0;
   const wrap=document.getElementById('diceWrap'); wrap.innerHTML='';
   const res=document.getElementById('diceRes'); res.textContent='';
   const dies=[];
-  for(let i=0;i<diceN;i++){ const d=document.createElement('div'); d.className='die rolling'; d.textContent='?'; wrap.appendChild(d); dies.push(d); }
+  const half=(e&&wpn.dual)?Math.ceil(diceN/2):0;
+  for(let i=0;i<diceN;i++){
+    if(half&&i===half){ const sp=document.createElement('div'); sp.style.cssText='width:2px;background:var(--border);margin:0 4px;'; wrap.appendChild(sp); }
+    const d=document.createElement('div'); d.className='die rolling'; d.textContent='?'; wrap.appendChild(d); dies.push(d);
+  }
   let ticks=0;
   const iv=setInterval(()=>{
     dies.forEach(d=>d.textContent=1+Math.floor(Math.random()*6));
@@ -683,7 +969,10 @@ function rollDice(){
         d.textContent=v; d.classList.remove('rolling');
         if(v>=accN){ d.classList.add('hit'); hits++; }
       });
-      res.innerHTML = hits>0 ? '<span style="color:var(--green)">'+hits+' HIT'+(hits>1?'S':'')+'!</span>' : '<span style="color:var(--dim)">Miss... the horde shambles on.</span>';
+      res.innerHTML = (hits>0 ? '<span style="color:var(--green)">'+hits+' HIT'+(hits>1?'S':'')+'!</span>' : '<span style="color:var(--dim)">Miss... the horde shambles on.</span>')+
+        (hits>0&&e?'<div class="small">'+hits+' &times; '+e.dmg+' damage: '+killsTxt(e.dmg)+'</div>':'')+
+        (rerolls?'<div class="small">Reroll #'+rerolls+' (replaces the previous roll)</div>':'');
+      document.getElementById('rerollBtn').style.display='';
       rolling=false;
     }
   },70);
@@ -787,7 +1076,7 @@ function initShare(){
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
 document.body.insertAdjacentHTML('beforeend','<datalist id="skillNamesAll">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>');
-renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); initShare(); updateUndoBtn();
+renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
