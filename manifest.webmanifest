@@ -1,0 +1,16 @@
+{
+  "name": "Zombicide Companion",
+  "short_name": "Zombicide",
+  "description": "Unofficial fan-made helper for Zombicide 1st Edition: turn guide, survivors, dice and spawn deck.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12100e",
+  "theme_color": "#12100e",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
