@@ -57,10 +57,11 @@ details .body li{margin-bottom:4px;}
 /* Survivors */
 .surv{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
 .surv{border-left-width:5px; transition:background .3s, border-color .3s;}
-.surv.sh-blue{border-color:var(--blue); background:linear-gradient(135deg,rgba(52,152,219,.20),rgba(52,152,219,.05) 60%),var(--panel);}
-.surv.sh-yellow{border-color:var(--yellow); background:linear-gradient(135deg,rgba(241,196,15,.20),rgba(241,196,15,.05) 60%),var(--panel);}
-.surv.sh-orange{border-color:var(--orange); background:linear-gradient(135deg,rgba(230,126,34,.22),rgba(230,126,34,.06) 60%),var(--panel);}
-.surv.sh-red{border-color:var(--red); background:linear-gradient(135deg,rgba(231,76,60,.24),rgba(231,76,60,.07) 60%),var(--panel);}
+.surv.sh-blue{border-color:var(--blue);} .surv.sh-yellow{border-color:var(--yellow);}
+.surv.sh-orange{border-color:var(--orange);} .surv.sh-red{border-color:var(--red);}
+/* panel tint = the survivor's figurine colour (set per survivor as --fig: r,g,b) */
+.surv.fig{background:linear-gradient(135deg,rgba(var(--fig),.30),rgba(var(--fig),.08) 65%),var(--panel);}
+.surv-head .swatch{display:inline-block; width:12px; height:12px; border-radius:50%; background:rgb(var(--fig)); margin-right:7px; vertical-align:middle; box-shadow:0 0 0 2px rgba(255,255,255,.15);}
 .surv.dead{opacity:.55; border-color:var(--red); background:var(--panel);}
 .surv-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
 .surv-head .name{font-weight:800; font-size:1.05rem;}
@@ -202,7 +203,7 @@ details .body li{margin-bottom:4px;}
       <input type="text" id="newName" placeholder="...or a custom survivor name" style="flex:1;">
       <button class="btn sec" onclick="addSurvivor()">Add custom</button>
     </div>
-    <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each. Remove anyone not playing with the &#10005; on their panel. Panels take the colour of each survivor's danger level.</div>
+    <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each. Remove anyone not playing with the &#10005; on their panel. Panels are tinted in each survivor's figurine colour; the border shows their danger level.</div>
   </div>
   <div id="survList"></div>
   <div class="row" style="justify-content:center; margin-top:4px;">
@@ -410,12 +411,12 @@ const SKILLS={
 /* 1st Edition base-box survivors, checked against the printed ID cards.
    `guess` can list levels whose layout isn't confirmed (shown as "guessed layout" in the UI); all are confirmed now. */
 const PRESETS=[
-  {id:'amy',   name:'Amy',   tree:{blue:['+1 free Move Action'], orange:['+1 free Combat Action','+1 free Move Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Medic']}, guess:[]},
-  {id:'doug',  name:'Doug',  tree:{blue:['Matching Set!'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 to dice roll: Combat','Ambidextrous','Slippery']}, guess:[]},
-  {id:'josh',  name:'Josh',  tree:{blue:['Slippery'], orange:['+1 die: Melee','1 re-roll per turn'], red:['+1 free Move Action','+1 to dice roll: Combat','Lucky']}, guess:[]},
-  {id:'ned',   name:'Ned',   tree:{blue:['+1 free Search Action'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Tough']}, guess:[]},
-  {id:'phil',  name:'Phil',  tree:{blue:['Starts with a Pistol'], orange:['+1 free Search Action','+1 to dice roll: Ranged'], red:['+1 die: Ranged','Born leader','Sniper']}, guess:[]},
-  {id:'wanda', name:'Wanda', tree:{blue:['2 Zones per Move Action'], orange:['+1 to dice roll: Melee','Slippery'], red:['+1 die: Combat','+1 free Move Action','+1 Zone per Move']}, guess:[]}
+  {id:'amy', fig:'155,89,182',   name:'Amy',   tree:{blue:['+1 free Move Action'], orange:['+1 free Combat Action','+1 free Move Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Medic']}, guess:[]},
+  {id:'doug', fig:'52,120,219',  name:'Doug',  tree:{blue:['Matching Set!'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 to dice roll: Combat','Ambidextrous','Slippery']}, guess:[]},
+  {id:'josh', fig:'230,126,34',  name:'Josh',  tree:{blue:['Slippery'], orange:['+1 die: Melee','1 re-roll per turn'], red:['+1 free Move Action','+1 to dice roll: Combat','Lucky']}, guess:[]},
+  {id:'ned', fig:'192,57,43',   name:'Ned',   tree:{blue:['+1 free Search Action'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Tough']}, guess:[]},
+  {id:'phil', fig:'141,123,104',  name:'Phil',  tree:{blue:['Starts with a Pistol'], orange:['+1 free Search Action','+1 to dice roll: Ranged'], red:['+1 die: Ranged','Born leader','Sniper']}, guess:[]},
+  {id:'wanda', fig:'26,188,170', name:'Wanda', tree:{blue:['2 Zones per Move Action'], orange:['+1 to dice roll: Melee','Slippery'], red:['+1 die: Combat','+1 free Move Action','+1 Zone per Move']}, guess:[]}
 ];
 const PICK_LEVELS=['orange','red'];
 function presetOf(s){ return s.preset ? PRESETS.find(p=>p.id===s.preset) : null; }
@@ -562,7 +563,9 @@ function renderSurv(){
   if(!survivors.length){ list.innerHTML='<div class="small" style="text-align:center; padding:20px;">No survivors yet &mdash; add your team above.</div>'; return; }
   survivors.forEach((s,i)=>{
     const lvl=levelOf(s.xp); const dead=s.wounds>=2; const acts=baseActions(s);
-    const div=document.createElement('div'); div.className='surv sh-'+lvl.key+(dead?' dead':'');
+    const div=document.createElement('div'); const fig=presetOf(s)&&presetOf(s).fig;
+    div.className='surv sh-'+lvl.key+(fig?' fig':'')+(dead?' dead':'');
+    if(fig) div.style.setProperty('--fig',fig);
     let pips=''; for(let p=0;p<acts;p++) pips+='<div class="pip'+(p<s.spent?' spent':'')+'" onclick="togglePip('+i+','+p+')"></div>';
     let wounds=''; for(let w=0;w<2;w++) wounds+='<div class="wound'+(w<s.wounds?' on':'')+'" onclick="toggleWound('+i+','+w+')">&#10007;</div>';
     // xp bar segments
@@ -578,7 +581,7 @@ function renderSurv(){
       inv+='<div class="slot"><span class="tag">'+tags[k]+'</span><input type="text" placeholder="empty" value="'+(s.inv[k]||'').replace(/"/g,'&quot;')+'" onchange="setInv('+i+','+k+',this.value)"></div>';
     }
     div.innerHTML=
-      '<div class="surv-head"><span class="name">'+esc(s.name)+'</span>'+
+      '<div class="surv-head"><span class="name">'+(fig?'<span class="swatch"></span>':'')+esc(s.name)+'</span>'+
       '<span class="row"><span class="pill '+lvl.cls+'">'+lvl.name+'</span>'+
       '<button class="btn sec" style="padding:4px 9px;font-size:.72rem;" onclick="removeSurv('+i+')">&#10005;</button></span></div>'+
       (dead?'<div class="deadband">&#9760; Eliminated &mdash; discard equipment</div>':'')+
