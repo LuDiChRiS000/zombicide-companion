@@ -530,13 +530,15 @@ function skillsBlock(s,i){
     PICK_LEVELS.forEach(k=>{ if(s.picks[k]) body+='<div class="small">'+LEVELS[levelIdx(k)].name+': <b style="color:var(--text)">'+esc(s.picks[k])+'</b> <a href="#" onclick="clearPick('+i+',\''+k+'\');return false;">undo</a></div>'; });
   }
   return '<div class="skills"><div class="skillchips">'+chips+'</div>'+
-    '<details><summary>Skill tree</summary><div class="body">'+body+'</div></details></div>';
+    '<details data-panel="skills"><summary>Skill tree</summary><div class="body">'+body+'</div></details></div>';
 }
 function toggleWound(i,w){ const s=survivors[i]; s.wounds = (s.wounds>w)? w : w+1; persistSurv(); }
 function togglePip(i,p){ const s=survivors[i]; s.spent = (s.spent>p)? p : p+1; persistSurv(); }
 function setInv(i,slot,val){ survivors[i].inv[slot]=val; save('survivors',survivors); }
 function removeSurv(i){ if(confirm('Remove '+survivors[i].name+'?')){ survivors.splice(i,1); persistSurv(); } }
 function resetAllActions(){ survivors.forEach(s=>s.spent=0); persistSurv(); }
+/* Remember which panels are open per survivor, so re-rendering (XP, wounds, actions) doesn't collapse them */
+const openPanels=new WeakMap();
 function renderSurv(){
   const list=document.getElementById('survList'); list.innerHTML='';
   if(!survivors.length){ list.innerHTML='<div class="small" style="text-align:center; padding:20px;">No survivors yet &mdash; add your team above.</div>'; return; }
@@ -570,7 +572,13 @@ function renderSurv(){
         '<div class="stat" style="flex:0 0 auto;"><div class="lbl">Wounds</div><div class="woundbox">'+wounds+'</div></div>'+
       '</div>'+
       skillsBlock(s,i)+
-      '<details class="inv"><summary>Inventory (5 slots, wounds take slots)</summary><div class="body">'+inv+'</div></details>';
+      '<details class="inv" data-panel="inv"><summary>Inventory (5 slots, wounds take slots)</summary><div class="body">'+inv+'</div></details>';
+    if(!openPanels.has(s)) openPanels.set(s,new Set());
+    const op=openPanels.get(s);
+    div.querySelectorAll('details[data-panel]').forEach(d=>{
+      if(op.has(d.dataset.panel)) d.open=true;
+      d.addEventListener('toggle',()=>{ d.open ? op.add(d.dataset.panel) : op.delete(d.dataset.panel); });
+    });
     list.appendChild(div);
   });
 }
