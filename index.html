@@ -20,7 +20,7 @@ header .sub{font-size:.72rem; color:var(--dim); margin-top:2px;}
 .screen{display:none; padding:14px; max-width:640px; margin:0 auto;}
 .screen.active{display:block;}
 nav{position:fixed; bottom:0; left:0; right:0; display:flex; background:var(--panel); border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom); z-index:50;}
-nav button{flex:1; background:none; border:none; color:var(--dim); padding:9px 2px 8px; font-size:.66rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit;}
+nav button{flex:1; min-width:0; background:none; border:none; color:var(--dim); padding:9px 2px 8px; font-size:.66rem; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; font-family:inherit;}
 nav button .ico{font-size:1.25rem; line-height:1;}
 nav button.active{color:var(--accent2);}
 .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:12px;}
@@ -723,60 +723,71 @@ function renderSpawn(){
    auto:'red' when a living survivor hits Red, auto:'allDead' when every survivor is dead.
    guess:true marks lines inferred rather than taken from the rulebook.
    tiles = the rulebook's "Tiles needed" list (official). grid = [cols,rows] inferred from the tile
-   count (GUESS); where each tile sits and its rotation are only on the rulebook map images.
+   count (GUESS; 04 and 05 confirmed by Chris). layout = optional rows of tiles in real placement
+   order, added once known. equip = equipment notes. Where each tile sits and its rotation are only on the rulebook map images.
    legend = what the map key shows. Other tabs (e.g. Setup) can read MISSIONS directly. */
+/* Official setup from the 1st Edition rulebook (p.4). Shared with any Setup / new-game screen. */
+const SETUP_STEPS=['Choose a Mission.','Place the tiles as shown on the mission map.','Place the doors, cars and Objective tokens.',
+  'Put aside: the pimpmobile cards (Evil Twins, Ma\'s Shotgun), Molotov, Pans and Wounded cards. Keep out 1 Fire Axe, 1 Crowbar and 1 Pistol for starting gear.',
+  'Shuffle the Zombie cards into one deck and the Equipment cards into another.',
+  'Pick survivors: 1 player runs 4, 2 players 3 each, 3 players 2 each, 4\u20136 players 1 each.',
+  'Put the survivor miniatures in the mission\'s starting area.',
+  'Set each ID card\'s XP tracker to the first blue square and the skill counter on the blue skill.',
+  'Deal starting gear at random: the Fire Axe, Crowbar and Pistol, plus enough Pans that every survivor gets 1 card. A survivor whose starting skill names a weapon also gets that card.',
+  'Choose the first player and give them the first-player token (it\'s co-op, so choose, don\'t roll).'];
+const SETUP_ASIDE=['Ma\'s Shotgun','Evil Twins','Molotov','Pans','Wounded cards','1 Fire Axe','1 Crowbar','1 Pistol'];
 const TOK_XP={id:'obj', label:'Objective token', xp:5, obj:true};
 const LOSE_ALL={t:'Every survivor is eliminated', auto:'allDead', guess:true};
 const MISSIONS=[
-  {id:'00', tiles:['2B', '1B'], grid:[2, 1], legend:['Player starting area', 'Zombie Spawn Zone', 'Locked door', 'Objective', '1 Walker (pre-placed)'], name:'Tutorial', diff:'Tutorial', surv:'4+', time:'20 min',
+  {id:'00', equip:["Do NOT deal the Pistol, Fire Axe and Crowbar: put them on top of the Equipment deck (the first 3 Search draws)", "Pans are dealt as usual", "Zombie deck: cards 1, 2, 3, 4 and 41 only"], tiles:['2B', '1B'], grid:[2, 1], legend:['Player starting area', 'Zombie Spawn Zone', 'Locked door', 'Objective', '1 Walker (pre-placed)'], name:'Tutorial', diff:'Tutorial', surv:'4+', time:'20 min',
    intro:'Cross the street to the neighbour\'s house. The zombies got there first.',
    tokens:[{id:'obj', label:'Objective token', xp:0, obj:true}], total:1, totalKnown:true,
    win:[{t:'Take the Objective token', auto:'tokens'}],
    lose:[LOSE_ALL],
    rules:['Zombie deck: only cards 1, 2, 3, 4 and 41.','Pistol, Fire Axe and Crowbar are not starting gear: put them on top of the Equipment deck.','The rulebook gives this token no XP value.']},
-  {id:'01', tiles:['2C', '1C', '4B', '5C', '7B', '5D', '6B', '5E', '1B'], grid:[3, 3], legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'City Blocks', diff:'Hard', surv:'4+', time:'150 min',
+  {id:'01', equip:["Standard starting equipment", "You need 1 Canned Food, 1 Rice and 1 Water from the Equipment deck to win"], tiles:['2C', '1C', '4B', '5C', '7B', '5D', '6B', '5E', '1B'], grid:[3, 3], legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'City Blocks', diff:'Hard', surv:'4+', time:'150 min',
    intro:'Food is running out. Raid the neighbouring houses for supplies.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Take all the Objective tokens', auto:'tokens'},{t:'Find at least 1 Canned Food, 1 Rice and 1 Water'},{t:'Reach the Exit Zone with at least 1 survivor carrying the food'}],
    lose:[LOSE_ALL],
    rules:['Each Objective token gives 5 XP to the survivor who takes it.']},
-  {id:'02', tiles:['4B', '4E', '1B', '7B', '5D', '6B', '3C', '4C', '2C'], grid:[3, 3], legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Medicine cabinet'], name:'Y-Zone', diff:'Medium', surv:'4+', time:'60 min',
+  {id:'02', equip:["Standard starting equipment", "Medicine cabinet token: the survivor who takes it discards 1 Wounded card"], tiles:['4B', '4E', '1B', '7B', '5D', '6B', '3C', '4C', '2C'], grid:[3, 3], legend:['Player starting area', 'Exit Zone', 'Zombie Spawn Zones', 'Locked doors', 'Medicine cabinet'], name:'Y-Zone', diff:'Medium', surv:'4+', time:'60 min',
    intro:'The resistance is collapsing. Get out before the supplies do.',
    tokens:[{id:'med', label:'Medicine cabinet (heals 1 wound)', xp:0, heal:true, obj:false}], total:1, totalKnown:true,
    win:[{t:'Reach the Exit Zone with ALL survivors'}],
    lose:[{t:'Any survivor is eliminated (all must exit)', auto:'anyDead', guess:true}],
    rules:['The token is a medicine cabinet: whoever takes it discards a Wounded card. No XP.']},
-  {id:'03', tiles:['2C', '4D', '4B', '5C', '6B', '5F', '1B', '3C', '4E'], grid:[3, 3], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'The 24hrs Race of Zombicity', diff:'Medium', surv:'4+', time:'90 min',
+  {id:'03', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['2C', '4D', '4B', '5C', '6B', '5F', '1B', '3C', '4E'], grid:[3, 3], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'The 24hrs Race of Zombicity', diff:'Medium', surv:'4+', time:'90 min',
    intro:'A rest home might hold supplies. The streets around it are swarming.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Reach Red Danger Level with at least 1 survivor', auto:'red'}],
    lose:[LOSE_ALL],
    rules:['Each Objective token gives 5 XP.','Cars can be used.','Pimpmobile: search once only.','Police car: search repeatedly, drawing until you find a weapon. "Aaahh!" spawns a Walker and ends the search.']},
-  {id:'04', tiles:['3C', '4D', '2C', '5F', '4E', '4B', '2B', '5C'], grid:[4, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'Drive-By Shooting', diff:'Medium', surv:'4+', time:'90 min',
+  {id:'04', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['3C', '4D', '2C', '5F', '4E', '4B', '2B', '5C'], grid:[4, 2], gridConfirmed:true, legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Cars you can drive'], name:'Drive-By Shooting', diff:'Medium', surv:'4+', time:'90 min',
    intro:'Destroy the nest by the subway entrance.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Take all the Objective tokens', auto:'tokens'},{t:'Then get all remaining survivors into the same Zombie Spawn Zone and clear it of zombies'}],
    lose:[LOSE_ALL],
    rules:['Each Objective token gives 5 XP.','Cars, pimpmobile and police car work as in Mission 03.']},
-  {id:'05', tiles:['5D', '2C', '1C', '7B', '5C', '6B', '5E', '1B', '4B'], grid:[3, 3], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Big W', diff:'Hard', surv:'6+', time:'180 min',
+  {id:'05', equip:["Standard starting equipment"], tiles:['5D', '2C', '1C', '7B', '5C', '6B', '5E', '1B', '4B'], grid:[3, 3], gridConfirmed:true, legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Big W', diff:'Hard', surv:'6+', time:'180 min',
    intro:'Scavenge the infested office towers without ringing the dinner bell for the whole city.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Take all the Objective tokens', auto:'tokens'}],
    lose:[LOSE_ALL],
    rules:['Each Objective token gives 5 XP.','Flavour warning: open one door at a time and keep the noise down.']},
-  {id:'06', tiles:['4C', '2C', '7B', '3C', '1B', '5D'], grid:[3, 2], legend:['Player starting area (no Search here)', 'Exit', 'Zombie Spawn Zones', 'Locked doors', 'Smashed doors', 'Cars you can drive'], name:'The Escape', diff:'Hard', surv:'6+', time:'150 min',
+  {id:'06', equip:["Standard starting equipment", "Supplies: Canned Food, Rice and Water cards go under car tokens (1 Action each to place or take)", "No Searching in the survivors' Starting Zone", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['4C', '2C', '7B', '3C', '1B', '5D'], grid:[3, 2], legend:['Player starting area (no Search here)', 'Exit', 'Zombie Spawn Zones', 'Locked doors', 'Smashed doors', 'Cars you can drive'], name:'The Escape', diff:'Hard', surv:'6+', time:'150 min',
    intro:'Raid the Z-Mart, load the cars, floor it.',
    tokens:[], total:0,
    win:[{t:'Place supply cards (Canned Food, Rice, Water) under the car tokens'},{t:'Get the remaining survivors into the cars'},{t:'Drive out of the Exit Zone with 6+ supply cards in total'}],
    lose:[LOSE_ALL,{t:'Fewer than 6 supply cards can still make it out', guess:true}],
    rules:['No Objective tokens in this mission.','You cannot Search the survivors\' Starting Zone.','1 Action: put or take 1 Canned Food, Rice or Water under a car token in your zone.','Cars can be used. Pimpmobile once; police car as in Mission 03.']},
-  {id:'07', tiles:['3C', '2C', '2B', '4C'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Permanent Noise tokens (Zombie Exit Zones)', 'Single Walker tokens'], name:'Grindhouse', diff:'Easy', surv:'6+', time:'45 min',
+  {id:'07', equip:["Standard starting equipment"], tiles:['3C', '2C', '2B', '4C'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)', 'Permanent Noise tokens (Zombie Exit Zones)', 'Single Walker tokens'], name:'Grindhouse', diff:'Easy', surv:'6+', time:'45 min',
    intro:'Seal the radioactive hospital before the infected technicians get out.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Neutralize every Zombie Spawn Zone'}],
    lose:[{t:'4 zombies have left the board through the Exit Zones'},LOSE_ALL],
    rules:['Each Objective token gives 5 XP.','Opening a door also opens the other door of the same building.','Each building zone starts with 1 Walker.','Exit Zones hold 7 permanent Noise tokens. Zombies reaching them are removed and counted.','Neutralize a Spawn Zone: 1 Action in it with no zombies. Locked doors don\'t stop it spawning.']},
-  {id:'08', tiles:['2C', '7B', '4B', '1B', '5C', '3C'], grid:[3, 2], legend:['Player starting area', 'BUNKER', 'Blue door + blue Objective', 'Green door + green Objective', '5 XP token (not an objective)', 'Zombie Spawn Zones + blue Spawn Zone', 'Locked doors', 'Cars you can drive'], name:'Zombie Police', diff:'Hard', surv:'6+', time:'180 min',
+  {id:'08', equip:["Standard starting equipment", "Pimpmobile: search once, it holds Ma's Shotgun or the Evil Twins (draw one at random)", "Police car: search more than once; draw until you find a weapon ('Aaahh!' spawns a Walker and stops the search)"], tiles:['2C', '7B', '4B', '1B', '5C', '3C'], grid:[3, 2], legend:['Player starting area', 'BUNKER', 'Blue door + blue Objective', 'Green door + green Objective', '5 XP token (not an objective)', 'Zombie Spawn Zones + blue Spawn Zone', 'Locked doors', 'Cars you can drive'], name:'Zombie Police', diff:'Hard', surv:'6+', time:'180 min',
    intro:'Reach the bunker by the police station. Its entrance is remote-controlled.',
    tokens:[{id:'blue', label:'Blue Objective (unlocks blue door, activates blue Spawn Zone)', xp:5, obj:true, once:true},
            {id:'green', label:'Green Objective (unlocks green door)', xp:5, obj:true, once:true},
@@ -785,14 +796,14 @@ const MISSIONS=[
    win:[{t:'Take the blue Objective', auto:'tok:blue'},{t:'Take the green Objective', auto:'tok:green'},{t:'Clear the bunker zone of zombies'},{t:'Get at least 1 survivor into the bunker'}],
    lose:[LOSE_ALL],
    rules:['Blue door stays shut until the blue Objective is taken; taking it activates the blue Spawn Zone.','Green door stays shut until the green Objective is taken.','Each Objective token gives 5 XP. One token is a 5 XP bonus that is not an objective.','Cars, pimpmobile and police car as in Mission 03.']},
-  {id:'09', tiles:['1B', '2B', '2C', '7B'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', '4 Objectives (3 neutral, 1 blue-sided)', 'Police car'], name:'Might Makes Right', diff:'Medium', surv:'Special (1–3 players)', time:'90 min',
+  {id:'09', equip:["Standard starting equipment for the first survivor of each player", "Survivors revealed later arrive with NO equipment", "Cars cannot be driven; police car searching still works as above"], tiles:['1B', '2B', '2C', '7B'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', '4 Objectives (3 neutral, 1 blue-sided)', 'Police car'], name:'Might Makes Right', diff:'Medium', surv:'Special (1–3 players)', time:'90 min',
    intro:'A radio signal leads you to another group of survivors who need rescuing.',
    tokens:[{id:'neutral', label:'Neutral Objective (fewest-survivor player reveals a new survivor)', xp:0, obj:true, xpGuess:true},
            {id:'blue', label:'Blue-side Objective (+5 XP, no new survivor)', xp:5, obj:true, once:true}], total:4, totalKnown:true,
    win:[{t:'Take all 4 Objective tokens', auto:'tokens'},{t:'Return to the Starting Zone with 4 survivors (1 player), 5 (2 players) or 6 (3 players)'}],
    lose:[LOSE_ALL,{t:'Too few survivors left to meet the head count', guess:true}],
    rules:['Each player starts with 1 survivor.','3 neutral Objectives and 1 two-sided one (standard/blue).','Neutral: the player with the fewest survivors reveals a new survivor with no equipment (ties: whoever took it).','Cars cannot be used. Police car as in Mission 03.']},
-  {id:'10', tiles:['7B', '2B', '5B', '5C'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Small Town', diff:'Hard', surv:'4+', time:'120 min',
+  {id:'10', equip:["Standard starting equipment"], tiles:['7B', '2B', '5B', '5C'], grid:[2, 2], legend:['Player starting area', 'Zombie Spawn Zones', 'Locked doors', 'Objectives (5 XP)'], name:'Small Town', diff:'Hard', surv:'4+', time:'120 min',
    intro:'Explore in widening circles around the hideout while the zombie population peaks.',
    tokens:[TOK_XP], total:0,
    win:[{t:'Take all the Objective tokens', auto:'tokens'}],
@@ -860,11 +871,14 @@ function checklistHTML(list,kind){
   return h;
 }
 function mapHTML(m){
-  const [cols]=m.grid;
-  let g='<div class="tilegrid" style="grid-template-columns:repeat('+cols+',1fr);">'+m.tiles.map(t=>'<div class="tile">'+t+'</div>').join('')+'</div>';
+  const [cols,rows]=m.grid;
+  // layout (optional) = rows of tiles in real placement order; otherwise fill the grid in list order
+  const cells=m.layout ? m.layout.flat() : m.tiles;
+  let g='<div class="tilegrid" style="grid-template-columns:repeat('+(m.layout?m.layout[0].length:cols)+',1fr);">'+cells.map(t=>'<div class="tile">'+t+'</div>').join('')+'</div>';
   return '<details data-panel="map"><summary>Map &amp; tiles ('+m.tiles.length+' tiles)</summary><div class="body">'+
-    '<div class="small" style="margin-bottom:6px;"><b>Tiles needed:</b> '+m.tiles.join(', ')+'</div>'+g+
-    '<div class="guess" style="margin-top:4px;">GUESS: grid shape and tile order. Copy the exact placement and rotation from the map in your rulebook.</div>'+
+    '<div class="small" style="margin-bottom:6px;"><b>Tiles needed:</b> '+m.tiles.join(', ')+'</div>'+
+    '<div class="small" style="text-align:center;">'+rows+' row'+(rows>1?'s':'')+' &times; '+cols+' column'+(cols>1?'s':'')+'</div>'+g+
+    '<div class="guess" style="margin-top:4px;">'+(m.layout?'':'GUESS: '+(m.gridConfirmed?'':'grid shape and ')+'tile positions. Copy placement and rotation from the map in your rulebook.')+'</div>'+
     '<div class="small" style="margin-top:8px;"><b>On the map:</b></div><ul>'+m.legend.map(l=>'<li>'+l+'</li>').join('')+'</ul>'+
     '<div class="small"><b>Goal:</b> '+m.win.map(w=>w.t).join(' &rarr; ')+'</div>'+
     '</div></details>';
@@ -881,6 +895,8 @@ function renderMission(){
     '<div class="mmeta"><span>'+m.diff+'</span><span>'+m.surv+' survivors</span><span>'+m.time+'</span></div>'+
     '<div class="small"><i>'+m.intro+'</i></div>'+
     mapHTML(m)+
+    '<details><summary>Equipment</summary><div class="body"><ul>'+m.equip.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>'+
+      '<div class="small">Standard starting equipment: each survivor gets 1 card, dealt at random from the Fire Axe, Crowbar, Pistol and enough Pans. Set aside Ma\'s Shotgun, Evil Twins, Molotov, Pans and Wounded cards.</div></div></details>'+
     '<details><summary>Special rules</summary><div class="body"><ul>'+m.rules.map(r=>'<li>'+r+'</li>').join('')+'</ul></div></details>';
   info.querySelectorAll('details').forEach((d,k)=>{ if(wasOpen[k]) d.open=true; });
   // tokens
