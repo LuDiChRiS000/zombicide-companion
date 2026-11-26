@@ -89,7 +89,6 @@ details .body li{margin-bottom:4px;}
 .tree .opt{display:inline-block; margin:0 6px 3px 0; color:var(--dim);}
 .tree .opt.got{color:var(--text); font-weight:800;}
 .tree .opt.got::before{content:'\2713 '; color:var(--green);}
-.guess{color:var(--yellow); font-size:.68rem; font-weight:700;}
 .modal{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-end; justify-content:center; z-index:100; padding:16px;}
 .modal.open{display:flex;}
 .modal .sheet{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; width:100%; max-width:520px; max-height:85vh; overflow:auto; margin-bottom:env(safe-area-inset-bottom);}
@@ -131,7 +130,7 @@ details .body li{margin-bottom:4px;}
 .tokbtns button{text-align:left;}
 .tokbtns button:disabled{opacity:.4;}
 .toklog{font-size:.75rem; color:var(--dim); margin-top:8px; line-height:1.5;}
-.guess{color:var(--yellow); font-size:.68rem; font-weight:700;}
+.guess{color:var(--dim); font-size:.72rem; font-style:italic; font-weight:400;}
 .step.lose.done .chk{background:var(--red); border-color:var(--red);}
 .step.auto{cursor:default;}
 .tilegrid{display:grid; gap:4px; max-width:320px; margin:4px auto 0;}
@@ -289,7 +288,7 @@ details .body li{margin-bottom:4px;}
   <div class="row" style="justify-content:center;">
     <button class="btn sec" onclick="resetMission()">Restart this mission</button>
   </div>
-  <div class="footer-note">Mission text paraphrased from the official 1st Edition rulebook. The number of Objective tokens is on the map image, so set it to match your board. Lines marked <span class="guess">GUESS</span> are inferred, not quoted.</div>
+  <div class="footer-note">Mission text paraphrased from the official 1st Edition rulebook. The number of Objective tokens is on the map image, so set it to match your board. Notes in <i>(italic brackets)</i> are inferred, not quoted.</div>
 </div>
 
 <!-- ============ SHARE ============ -->
@@ -501,7 +500,7 @@ function openSkillPicker(i,lv){
   const s=survivors[i]; const p=presetOf(s); const L=LEVELS[levelIdx(lv)];
   let html='<h2>'+esc(s.name)+' reached <span style="color:'+L.col+'">'+L.name+'</span></h2>';
   if(p){
-    html+='<div class="small">Choose 1 of '+p.tree[lv].length+' skills.'+(p.guess.includes(lv)?' <span class="guess">Unverified layout: check your ID card.</span>':'')+'</div>';
+    html+='<div class="small">Choose 1 of '+p.tree[lv].length+' skills.'+(p.guess.includes(lv)?' <span class="guess">(layout unverified, check your ID card)</span>':'')+'</div>';
     p.tree[lv].forEach((n,k)=>{
       html+='<button class="skillopt" onclick="pickSkill('+i+',\''+lv+'\','+k+')"><b>'+esc(n)+'</b><span>'+esc(SKILLS[n]||'')+'</span></button>';
     });
@@ -553,12 +552,12 @@ function skillsBlock(s,i){
         const got = (k==='blue'||k==='yellow') ? reached(s,k) : s.picks[k]===n;
         body+='<span class="opt'+(got?' got':'')+'">'+esc(n)+'</span>';
       });
-      if(p.guess.includes(k)) body+='<span class="guess">guessed layout</span>';
+      if(p.guess.includes(k)) body+=' <span class="guess">(guessed layout)</span>';
       if(PICK_LEVELS.includes(k)&&s.picks[k]) body+=' <a href="#" class="small" onclick="clearPick('+i+',\''+k+'\');return false;">undo</a>';
       body+='</td></tr>';
     });
     body+='</table>';
-    if(p.guess.length) body+='<div class="small" style="margin-top:6px;">Skills marked <span class="guess">guessed layout</span> are this survivor\'s real skills, but which level each sits on isn\'t confirmed. Trust your ID card.</div>';
+    if(p.guess.length) body+='<div class="small" style="margin-top:6px;">Skills marked <span class="guess">(guessed layout)</span> are this survivor\'s real skills, but which level each sits on isn\'t confirmed. Trust your ID card.</div>';
   } else {
     body+='<div class="slot inv" style="display:flex;gap:6px;align-items:center;"><span class="small" style="width:52px;">Blue</span>'+
       '<input type="text" list="skillNamesAll" placeholder="starting skill" value="'+esc(s.picks.blue||'')+'" onchange="setCustomBlue('+i+',this.value)" style="flex:1;padding:6px 8px;font-size:.85rem;"></div>';
@@ -723,7 +722,7 @@ function renderSpawn(){
    auto:'red' when a living survivor hits Red, auto:'allDead' when every survivor is dead.
    guess:true marks lines inferred rather than taken from the rulebook.
    tiles = the rulebook's "Tiles needed" list (official). grid = [cols,rows] inferred from the tile
-   count (GUESS; 04 and 05 confirmed by Chris). layout = optional rows of tiles in real placement
+   count (a guess; 04 and 05 confirmed by Chris). layout = optional rows of tiles in real placement
    order, added once known. equip = equipment notes. Where each tile sits and its rotation are only on the rulebook map images.
    legend = what the map key shows. Other tabs (e.g. Setup) can read MISSIONS directly. */
 /* Official setup from the 1st Edition rulebook (p.4). Shared with any Setup / new-game screen. */
@@ -866,7 +865,7 @@ function checklistHTML(list,kind){
       '<div class="chk">'+(done?(kind==='lose'?'&#10007;':'&#10003;'):'')+'</div>'+
       '<div><div class="stitle">'+it.t+'</div>'+
       (it.auto?'<div class="sdesc">Ticks itself from '+(it.auto==='tokens'||it.auto.indexOf('tok:')===0?'the token counter':'the Survivors tab')+'.</div>':'')+
-      (it.guess?'<div class="guess">GUESS &mdash; not stated in the rulebook</div>':'')+'</div></div>';
+      (it.guess?'<div class="guess">(a guess: the rulebook doesn\'t say this)</div>':'')+'</div></div>';
   });
   return h;
 }
@@ -878,7 +877,7 @@ function mapHTML(m){
   return '<details data-panel="map"><summary>Map &amp; tiles ('+m.tiles.length+' tiles)</summary><div class="body">'+
     '<div class="small" style="margin-bottom:6px;"><b>Tiles needed:</b> '+m.tiles.join(', ')+'</div>'+
     '<div class="small" style="text-align:center;">'+rows+' row'+(rows>1?'s':'')+' &times; '+cols+' column'+(cols>1?'s':'')+'</div>'+g+
-    '<div class="guess" style="margin-top:4px;">'+(m.layout?'':'GUESS: '+(m.gridConfirmed?'':'grid shape and ')+'tile positions. Copy placement and rotation from the map in your rulebook.')+'</div>'+
+    '<div class="guess" style="margin-top:4px;">'+(m.layout?'':'(tile positions'+(m.gridConfirmed?'':' and grid shape')+' above are a guess; copy placement and rotation from the map in your rulebook)')+'</div>'+
     '<div class="small" style="margin-top:8px;"><b>On the map:</b></div><ul>'+m.legend.map(l=>'<li>'+l+'</li>').join('')+'</ul>'+
     '<div class="small"><b>Goal:</b> '+m.win.map(w=>w.t).join(' &rarr; ')+'</div>'+
     '</div></details>';
@@ -920,7 +919,7 @@ function renderMission(){
       const full=t.obj && tot>0 && got>=tot;
       const fx=t.xp?' +'+t.xp+' XP':(t.heal?'':' (no XP)');
       h+='<button class="btn'+(t.obj?'':' sec')+'"'+((used||full)?' disabled':'')+' onclick="takeToken(\''+t.id+'\')">Take: '+t.label+fx+'</button>';
-      if(t.xpGuess) h+='<div class="guess">GUESS &mdash; rulebook only promises XP for the blue side</div>';
+      if(t.xpGuess) h+='<div class="guess">(XP for neutral tokens is a guess; the rulebook only promises it for the blue side)</div>';
     });
     h+='</div>';
     if(mission.taken.length){
