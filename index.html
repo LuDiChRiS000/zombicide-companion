@@ -56,7 +56,12 @@ details .body li{margin-bottom:4px;}
 
 /* Survivors */
 .surv{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:12px;}
-.surv.dead{opacity:.55; border-color:var(--red);}
+.surv{border-left-width:5px; transition:background .3s, border-color .3s;}
+.surv.sh-blue{border-color:var(--blue); background:linear-gradient(135deg,rgba(52,152,219,.20),rgba(52,152,219,.05) 60%),var(--panel);}
+.surv.sh-yellow{border-color:var(--yellow); background:linear-gradient(135deg,rgba(241,196,15,.20),rgba(241,196,15,.05) 60%),var(--panel);}
+.surv.sh-orange{border-color:var(--orange); background:linear-gradient(135deg,rgba(230,126,34,.22),rgba(230,126,34,.06) 60%),var(--panel);}
+.surv.sh-red{border-color:var(--red); background:linear-gradient(135deg,rgba(231,76,60,.24),rgba(231,76,60,.07) 60%),var(--panel);}
+.surv.dead{opacity:.55; border-color:var(--red); background:var(--panel);}
 .surv-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
 .surv-head .name{font-weight:800; font-size:1.05rem;}
 .statrow{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
@@ -192,11 +197,12 @@ details .body li{margin-bottom:4px;}
       <select id="newPreset" style="flex:1;"></select>
       <button class="btn" onclick="addPreset()">Add</button>
     </div>
+    <div class="row" style="margin-top:8px;"><button class="btn sec" id="addAllBtn" onclick="addAllPresets()" style="flex:1;"></button></div>
     <div class="row" style="margin-top:8px;">
       <input type="text" id="newName" placeholder="...or a custom survivor name" style="flex:1;">
       <button class="btn sec" onclick="addSurvivor()">Add custom</button>
     </div>
-    <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each.</div>
+    <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each. Remove anyone not playing with the &#10005; on their panel. Panels take the colour of each survivor's danger level.</div>
   </div>
   <div id="survList"></div>
   <div class="row" style="justify-content:center; margin-top:4px;">
@@ -426,7 +432,8 @@ function activeSkills(s){
 }
 function pendingPicks(s){ return PICK_LEVELS.filter(k=>reached(s,k)&&!s.picks[k]); }
 
-let survivors=load('survivors',[]);
+let survivors=load('survivors',null);
+if(!survivors){ survivors=PRESETS.map(p=>presetSurv(p)); save('survivors',survivors); } // first run: start with the six base survivors
 survivors.forEach(s=>{ if(!s.picks) s.picks={}; if(s.preset===undefined) s.preset=null; }); // upgrade older saves
 function baseActions(s){ return levelOf(s.xp).min>=7 ? 4 : 3; }
 function newSurv(name,preset){ return {name:name, preset:preset||null, picks:{}, xp:0, wounds:0, spent:0, inv:['','','','','']}; }
@@ -436,11 +443,19 @@ function addSurvivor(){
   survivors.push(newSurv(name,null));
   inp.value=''; persistSurv();
 }
-function addPreset(){
-  const id=document.getElementById('newPreset').value; const p=PRESETS.find(x=>x.id===id); if(!p)return;
+function presetSurv(p){
   const s=newSurv(p.name,p.id);
   if(p.tree.blue.includes('Starts with a Pistol')) s.inv[0]='Pistol';
-  survivors.push(s); persistSurv();
+  return s;
+}
+function addPreset(){
+  const id=document.getElementById('newPreset').value; const p=PRESETS.find(x=>x.id===id); if(!p)return;
+  survivors.push(presetSurv(p)); persistSurv();
+}
+function addAllPresets(){
+  const taken=survivors.map(s=>s.preset);
+  PRESETS.filter(p=>!taken.includes(p.id)).forEach(p=>survivors.push(presetSurv(p)));
+  persistSurv();
 }
 function renderPresetSelect(){
   const sel=document.getElementById('newPreset'); const taken=survivors.map(s=>s.preset);
@@ -449,6 +464,9 @@ function renderPresetSelect(){
     ? avail.map(p=>'<option value="'+p.id+'">'+p.name+' &mdash; '+esc(p.tree.blue[0])+'</option>').join('')
     : '<option value="">All 6 base survivors are in play</option>';
   sel.disabled=!avail.length;
+  const all=document.getElementById('addAllBtn');
+  all.style.display=avail.length?'':'none';
+  all.textContent=avail.length===PRESETS.length?'Add all 6 base survivors':'Add the other '+avail.length;
 }
 function persistSurv(){ save('survivors',survivors); renderSurv(); renderPresetSelect(); updateDangerPill(); renderSpawn(); }
 function chgXp(i,d){
@@ -544,7 +562,7 @@ function renderSurv(){
   if(!survivors.length){ list.innerHTML='<div class="small" style="text-align:center; padding:20px;">No survivors yet &mdash; add your team above.</div>'; return; }
   survivors.forEach((s,i)=>{
     const lvl=levelOf(s.xp); const dead=s.wounds>=2; const acts=baseActions(s);
-    const div=document.createElement('div'); div.className='surv'+(dead?' dead':'');
+    const div=document.createElement('div'); div.className='surv sh-'+lvl.key+(dead?' dead':'');
     let pips=''; for(let p=0;p<acts;p++) pips+='<div class="pip'+(p<s.spent?' spent':'')+'" onclick="togglePip('+i+','+p+')"></div>';
     let wounds=''; for(let w=0;w<2;w++) wounds+='<div class="wound'+(w<s.wounds?' on':'')+'" onclick="toggleWound('+i+','+w+')">&#10007;</div>';
     // xp bar segments
