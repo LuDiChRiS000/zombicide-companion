@@ -77,6 +77,27 @@ details .body li{margin-bottom:4px;}
 .inv .slot{display:flex; gap:6px; align-items:center; margin-bottom:5px;}
 .inv .slot .tag{font-size:.62rem; text-transform:uppercase; width:52px; color:var(--dim); font-weight:700;}
 .inv .slot input{flex:1; padding:6px 8px; font-size:.85rem;}
+.skills{margin-top:10px;}
+.skillchips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+.chip{display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px; font-size:.75rem; font-weight:700; background:var(--panel2); border:1px solid var(--border); cursor:pointer; font-family:inherit; color:var(--text);}
+.chip .dot{width:9px; height:9px; border-radius:50%;}
+.chip.pending{border-color:var(--yellow); color:var(--yellow); animation:pulse 1.4s infinite;}
+@keyframes pulse{50%{opacity:.55}}
+.tree{width:100%; border-collapse:collapse; font-size:.78rem;}
+.tree td{padding:5px 4px; border-top:1px solid var(--border); vertical-align:top;}
+.tree td.lv{width:62px; font-weight:800; font-size:.68rem; text-transform:uppercase;}
+.tree .opt{display:inline-block; margin:0 6px 3px 0; color:var(--dim);}
+.tree .opt.got{color:var(--text); font-weight:800;}
+.tree .opt.got::before{content:'\2713 '; color:var(--green);}
+.guess{color:var(--yellow); font-size:.68rem; font-weight:700;}
+.modal{position:fixed; inset:0; background:rgba(0,0,0,.7); display:none; align-items:flex-end; justify-content:center; z-index:100; padding:16px;}
+.modal.open{display:flex;}
+.modal .sheet{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; width:100%; max-width:520px; max-height:85vh; overflow:auto; margin-bottom:env(safe-area-inset-bottom);}
+.modal h2{margin:0 0 4px; font-size:1rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent2);}
+.skillopt{display:block; width:100%; text-align:left; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-top:8px; color:var(--text); font-family:inherit; cursor:pointer;}
+.skillopt b{display:block; font-size:.92rem; margin-bottom:2px;}
+.skillopt span{font-size:.76rem; color:var(--dim); line-height:1.4;}
+.skillopt:active{border-color:var(--accent);}
 .deadband{margin-top:8px; color:var(--red); font-weight:900; text-transform:uppercase; letter-spacing:1px; font-size:.85rem;}
 
 /* Dice */
@@ -168,8 +189,12 @@ details .body li{margin-bottom:4px;}
   <div class="card">
     <h2>Add Survivor</h2>
     <div class="row">
-      <input type="text" id="newName" placeholder="Survivor name (e.g. Wanda)" style="flex:1;">
-      <button class="btn" onclick="addSurvivor()">Add</button>
+      <select id="newPreset" style="flex:1;"></select>
+      <button class="btn" onclick="addPreset()">Add</button>
+    </div>
+    <div class="row" style="margin-top:8px;">
+      <input type="text" id="newName" placeholder="...or a custom survivor name" style="flex:1;">
+      <button class="btn sec" onclick="addSurvivor()">Add custom</button>
     </div>
     <div class="small" style="margin-top:8px;">Solo: run 4 survivors. 2 players: 3 each. 3 players: 2 each. 4&ndash;6 players: 1 each.</div>
   </div>
@@ -249,6 +274,8 @@ details .body li{margin-bottom:4px;}
   </div>
   <div class="footer-note">Unofficial fan-made companion for the Zombicide board game (1st Edition) by Guillotine Games / CMON. Not affiliated with or endorsed by the publishers. Own the game to play!</div>
 </div>
+
+<div class="modal" id="skillModal" onclick="if(event.target===this)closeSkillModal()"><div class="sheet" id="skillSheet"></div></div>
 
 <nav>
   <button class="active" data-scr="guide" onclick="show('guide')"><span class="ico">&#128214;</span>Turn Guide</button>
@@ -347,16 +374,164 @@ function resetRound(confirmIt){
 }
 
 /* ---------- SURVIVORS ---------- */
+function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Skill definitions (paraphrased from the 1st Edition rulebook, Skills chapter) */
+const SKILLS={
+  '+1 Action':'One extra Action to use however you like.',
+  '+1 die: Combat':'Your weapons roll one extra die in Melee and Ranged Combat. Dual weapons get one each.',
+  '+1 die: Melee':'Your Melee weapons roll one extra die. Dual Melee weapons get one each.',
+  '+1 die: Ranged':'Your Ranged weapons roll one extra die. Dual Ranged weapons get one each.',
+  '+1 to dice roll: Combat':'Add 1 to each die you roll in Combat (Melee or Ranged). Max result is still 6.',
+  '+1 to dice roll: Melee':'Add 1 to each die you roll in Melee Combat. Max result is still 6.',
+  '+1 to dice roll: Ranged':'Add 1 to each die you roll in Ranged Combat. Max result is still 6.',
+  '+1 free Combat Action':'One free extra Action, usable only for Melee or Ranged Combat.',
+  '+1 free Move Action':'One free extra Action, usable only to Move.',
+  '+1 free Search Action':'One free extra Action, usable only to Search. Still only one Search per turn.',
+  '+1 Zone per Move':'Move one extra Zone with each Move Action. Stacks with other Move effects.',
+  '2 Zones per Move Action':'Each Move Action can take you 1 or 2 Zones.',
+  '1 re-roll per turn':'Once per turn, re-roll all the dice of one Action. The new roll replaces the old one.',
+  'Lucky':'Once per Action, re-roll all its dice. The new roll replaces the old one. Stacks with other re-rolls.',
+  'Ambidextrous':'Treat every Melee and Ranged weapon as if it had the Dual symbol.',
+  'Matching Set!':'When a Search draws a Dual weapon, also take a second copy of it from the Equipment deck, then shuffle.',
+  'Medic':'Once per turn, for free, remove one Wounded card from a Survivor in your Zone (yourself included).',
+  'Slippery':'Moving out of a Zone with Zombies costs no extra Actions.',
+  'Sniper':'Choose the targets of your Ranged Combat Actions freely (ignore targeting priority).',
+  'Born leader':'During your turn, give one free Action to another Survivor. They must use it on their next turn.',
+  'Tough':'Ignore the first Attack you receive from a single Zombie each Zombies\' Phase.',
+  'Starts with a Pistol':'Begins the game with a Pistol.'
+};
+/* 1st Edition base-box survivors, checked against the printed ID cards.
+   `guess` can list levels whose layout isn't confirmed (shown as "guessed layout" in the UI); all are confirmed now. */
+const PRESETS=[
+  {id:'amy',   name:'Amy',   tree:{blue:['+1 free Move Action'], orange:['+1 free Combat Action','+1 free Move Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Medic']}, guess:[]},
+  {id:'doug',  name:'Doug',  tree:{blue:['Matching Set!'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 to dice roll: Combat','Ambidextrous','Slippery']}, guess:[]},
+  {id:'josh',  name:'Josh',  tree:{blue:['Slippery'], orange:['+1 die: Melee','1 re-roll per turn'], red:['+1 free Move Action','+1 to dice roll: Combat','Lucky']}, guess:[]},
+  {id:'ned',   name:'Ned',   tree:{blue:['+1 free Search Action'], orange:['+1 die: Ranged','+1 free Combat Action'], red:['+1 die: Combat','+1 to dice roll: Combat','Tough']}, guess:[]},
+  {id:'phil',  name:'Phil',  tree:{blue:['Starts with a Pistol'], orange:['+1 free Search Action','+1 to dice roll: Ranged'], red:['+1 die: Ranged','Born leader','Sniper']}, guess:[]},
+  {id:'wanda', name:'Wanda', tree:{blue:['2 Zones per Move Action'], orange:['+1 to dice roll: Melee','Slippery'], red:['+1 die: Combat','+1 free Move Action','+1 Zone per Move']}, guess:[]}
+];
+const PICK_LEVELS=['orange','red'];
+function presetOf(s){ return s.preset ? PRESETS.find(p=>p.id===s.preset) : null; }
+function levelIdx(key){ return LEVELS.findIndex(L=>L.key===key); }
+function reached(s,key){ return levelIdx(levelOf(s.xp).key)>=levelIdx(key); }
+/* All skills a survivor currently has, in level order */
+function activeSkills(s){
+  const out=[]; const p=presetOf(s);
+  if(p) p.tree.blue.forEach(n=>out.push({lv:'blue',name:n}));
+  else if(s.picks.blue) out.push({lv:'blue',name:s.picks.blue});
+  if(reached(s,'yellow')) out.push({lv:'yellow',name:'+1 Action'});
+  PICK_LEVELS.forEach(k=>{ if(reached(s,k)&&s.picks[k]) out.push({lv:k,name:s.picks[k]}); });
+  return out;
+}
+function pendingPicks(s){ return PICK_LEVELS.filter(k=>reached(s,k)&&!s.picks[k]); }
+
 let survivors=load('survivors',[]);
+survivors.forEach(s=>{ if(!s.picks) s.picks={}; if(s.preset===undefined) s.preset=null; }); // upgrade older saves
 function baseActions(s){ return levelOf(s.xp).min>=7 ? 4 : 3; }
+function newSurv(name,preset){ return {name:name, preset:preset||null, picks:{}, xp:0, wounds:0, spent:0, inv:['','','','','']}; }
 function addSurvivor(){
   const inp=document.getElementById('newName');
   const name=inp.value.trim(); if(!name)return;
-  survivors.push({name:name, xp:0, wounds:0, spent:0, inv:['','','','','']});
+  survivors.push(newSurv(name,null));
   inp.value=''; persistSurv();
 }
-function persistSurv(){ save('survivors',survivors); renderSurv(); updateDangerPill(); renderSpawn(); }
-function chgXp(i,d){ const s=survivors[i]; const before=baseActions(s); s.xp=Math.max(0,Math.min(60,s.xp+d)); if(baseActions(s)>before) s.spent=Math.max(0,s.spent); persistSurv(); }
+function addPreset(){
+  const id=document.getElementById('newPreset').value; const p=PRESETS.find(x=>x.id===id); if(!p)return;
+  const s=newSurv(p.name,p.id);
+  if(p.tree.blue.includes('Starts with a Pistol')) s.inv[0]='Pistol';
+  survivors.push(s); persistSurv();
+}
+function renderPresetSelect(){
+  const sel=document.getElementById('newPreset'); const taken=survivors.map(s=>s.preset);
+  const avail=PRESETS.filter(p=>!taken.includes(p.id));
+  sel.innerHTML = avail.length
+    ? avail.map(p=>'<option value="'+p.id+'">'+p.name+' &mdash; '+esc(p.tree.blue[0])+'</option>').join('')
+    : '<option value="">All 6 base survivors are in play</option>';
+  sel.disabled=!avail.length;
+}
+function persistSurv(){ save('survivors',survivors); renderSurv(); renderPresetSelect(); updateDangerPill(); renderSpawn(); }
+function chgXp(i,d){
+  const s=survivors[i];
+  s.xp=Math.max(0,Math.min(60,s.xp+d));
+  // XP went back down (a correction): drop picks for levels no longer reached
+  PICK_LEVELS.forEach(k=>{ if(!reached(s,k)) delete s.picks[k]; });
+  persistSurv();
+  const pend=pendingPicks(s);
+  if(d>0 && pend.length) openSkillPicker(i,pend[0]);
+}
+
+/* ---------- skill picker ---------- */
+function openSkillPicker(i,lv){
+  const s=survivors[i]; const p=presetOf(s); const L=LEVELS[levelIdx(lv)];
+  let html='<h2>'+esc(s.name)+' reached <span style="color:'+L.col+'">'+L.name+'</span></h2>';
+  if(p){
+    html+='<div class="small">Choose 1 of '+p.tree[lv].length+' skills.'+(p.guess.includes(lv)?' <span class="guess">Unverified layout: check your ID card.</span>':'')+'</div>';
+    p.tree[lv].forEach((n,k)=>{
+      html+='<button class="skillopt" onclick="pickSkill('+i+',\''+lv+'\','+k+')"><b>'+esc(n)+'</b><span>'+esc(SKILLS[n]||'')+'</span></button>';
+    });
+  } else {
+    html+='<div class="small">Custom survivor: pick from the list or type the skill from your ID card.</div>'+
+      '<div class="row" style="margin-top:10px;"><input type="text" id="customSkill" list="skillNames" placeholder="Skill name" style="flex:1;">'+
+      '<button class="btn" onclick="pickCustom('+i+',\''+lv+'\')">Take</button></div>'+
+      '<datalist id="skillNames">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>';
+  }
+  html+='<div class="row" style="justify-content:flex-end; margin-top:12px;"><button class="btn sec" onclick="closeSkillModal()">Decide later</button></div>';
+  document.getElementById('skillSheet').innerHTML=html;
+  document.getElementById('skillModal').classList.add('open');
+}
+function closeSkillModal(){ document.getElementById('skillModal').classList.remove('open'); }
+function afterPick(i){
+  closeSkillModal(); persistSurv();
+  const pend=pendingPicks(survivors[i]); if(pend.length) openSkillPicker(i,pend[0]); // e.g. a big XP jump past Orange and Red
+}
+function pickSkill(i,lv,k){ survivors[i].picks[lv]=presetOf(survivors[i]).tree[lv][k]; afterPick(i); }
+function pickCustom(i,lv){
+  const v=document.getElementById('customSkill').value.trim(); if(!v)return;
+  survivors[i].picks[lv]=v; afterPick(i);
+}
+function setCustomBlue(i,v){ v=v.trim(); if(v) survivors[i].picks.blue=v; else delete survivors[i].picks.blue; persistSurv(); }
+function clearPick(i,lv){ if(confirm('Undo '+survivors[i].name+'\'s '+lv+' skill choice?')){ delete survivors[i].picks[lv]; persistSurv(); } }
+function showSkill(name){
+  document.getElementById('skillSheet').innerHTML='<h2>'+esc(name)+'</h2><div class="small" style="font-size:.88rem;">'+esc(SKILLS[name]||'No rule text stored for this skill. Check your ID card or the rulebook.')+'</div>'+
+    '<div class="row" style="justify-content:flex-end; margin-top:12px;"><button class="btn sec" onclick="closeSkillModal()">Close</button></div>';
+  document.getElementById('skillModal').classList.add('open');
+}
+function skillsBlock(s,i){
+  const p=presetOf(s);
+  let chips='';
+  activeSkills(s).forEach((sk,n)=>{
+    const L=LEVELS[levelIdx(sk.lv)];
+    chips+='<button class="chip" onclick="showSkill(activeSkills(survivors['+i+'])['+n+'].name)"><span class="dot" style="background:'+L.col+'"></span>'+esc(sk.name)+'</button>';
+  });
+  pendingPicks(s).forEach(k=>{
+    chips+='<button class="chip pending" onclick="openSkillPicker('+i+',\''+k+'\')">&#9733; Pick '+LEVELS[levelIdx(k)].name+' skill</button>';
+  });
+  if(!chips) chips='<span class="small">No skills yet.</span>';
+  let body='';
+  if(p){
+    body+='<table class="tree">';
+    ['blue','yellow','orange','red'].forEach(k=>{
+      const L=LEVELS[levelIdx(k)]; const opts=k==='yellow'?['+1 Action']:p.tree[k];
+      body+='<tr><td class="lv" style="color:'+L.col+'">'+L.name+'</td><td>';
+      opts.forEach(n=>{
+        const got = (k==='blue'||k==='yellow') ? reached(s,k) : s.picks[k]===n;
+        body+='<span class="opt'+(got?' got':'')+'">'+esc(n)+'</span>';
+      });
+      if(p.guess.includes(k)) body+='<span class="guess">guessed layout</span>';
+      if(PICK_LEVELS.includes(k)&&s.picks[k]) body+=' <a href="#" class="small" onclick="clearPick('+i+',\''+k+'\');return false;">undo</a>';
+      body+='</td></tr>';
+    });
+    body+='</table>';
+    if(p.guess.length) body+='<div class="small" style="margin-top:6px;">Skills marked <span class="guess">guessed layout</span> are this survivor\'s real skills, but which level each sits on isn\'t confirmed. Trust your ID card.</div>';
+  } else {
+    body+='<div class="slot inv" style="display:flex;gap:6px;align-items:center;"><span class="small" style="width:52px;">Blue</span>'+
+      '<input type="text" list="skillNamesAll" placeholder="starting skill" value="'+esc(s.picks.blue||'')+'" onchange="setCustomBlue('+i+',this.value)" style="flex:1;padding:6px 8px;font-size:.85rem;"></div>';
+    PICK_LEVELS.forEach(k=>{ if(s.picks[k]) body+='<div class="small">'+LEVELS[levelIdx(k)].name+': <b style="color:var(--text)">'+esc(s.picks[k])+'</b> <a href="#" onclick="clearPick('+i+',\''+k+'\');return false;">undo</a></div>'; });
+  }
+  return '<div class="skills"><div class="skillchips">'+chips+'</div>'+
+    '<details><summary>Skill tree</summary><div class="body">'+body+'</div></details></div>';
+}
 function toggleWound(i,w){ const s=survivors[i]; s.wounds = (s.wounds>w)? w : w+1; persistSurv(); }
 function togglePip(i,p){ const s=survivors[i]; s.spent = (s.spent>p)? p : p+1; persistSurv(); }
 function setInv(i,slot,val){ survivors[i].inv[slot]=val; save('survivors',survivors); }
@@ -383,7 +558,7 @@ function renderSurv(){
       inv+='<div class="slot"><span class="tag">'+tags[k]+'</span><input type="text" placeholder="empty" value="'+(s.inv[k]||'').replace(/"/g,'&quot;')+'" onchange="setInv('+i+','+k+',this.value)"></div>';
     }
     div.innerHTML=
-      '<div class="surv-head"><span class="name">'+s.name+'</span>'+
+      '<div class="surv-head"><span class="name">'+esc(s.name)+'</span>'+
       '<span class="row"><span class="pill '+lvl.cls+'">'+lvl.name+'</span>'+
       '<button class="btn sec" style="padding:4px 9px;font-size:.72rem;" onclick="removeSurv('+i+')">&#10005;</button></span></div>'+
       (dead?'<div class="deadband">&#9760; Eliminated &mdash; discard equipment</div>':'')+
@@ -394,6 +569,7 @@ function renderSurv(){
         '<div class="stat"><div class="lbl">Actions ('+(acts-s.spent)+'/'+acts+' left &mdash; tap to spend)</div><div class="pips">'+pips+'</div></div>'+
         '<div class="stat" style="flex:0 0 auto;"><div class="lbl">Wounds</div><div class="woundbox">'+wounds+'</div></div>'+
       '</div>'+
+      skillsBlock(s,i)+
       '<details class="inv"><summary>Inventory (5 slots, wounds take slots)</summary><div class="body">'+inv+'</div></details>';
     list.appendChild(div);
   });
@@ -522,7 +698,8 @@ function initShare(){
 /* ---------- init ---------- */
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
-renderGuide(); renderSurv(); renderSpawn(); initShare();
+document.body.insertAdjacentHTML('beforeend','<datalist id="skillNamesAll">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>');
+renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); initShare();
 document.getElementById('newName').addEventListener('keydown',e=>{ if(e.key==='Enter')addSurvivor(); });
 </script>
 </body>
