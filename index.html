@@ -500,7 +500,7 @@ body.nohints .hint{display:none;}
   </div>
   <div class="card">
     <h2>Equipment Catalogue</h2>
-    <div class="small">1st Edition (Season 1 core box). Checked against the rulebook and photos of the real cards. Anything marked <i class="wguess">(guess)</i> hasn't been checked yet &mdash; trust your cards over this table.</div>
+    <div class="small">1st Edition (Season 1 core box). Every stat checked against the rulebook and the real cards.</div>
     <details><summary>Show all equipment</summary><div class="body" id="catBody"></div></details>
   </div>
 </div>
@@ -710,32 +710,32 @@ function resetRound(confirmIt){
    Ammo) and the Season 1 rulebook (Pistol, Crowbar, Rifle, Fire Axe cards plus
    examples for Sub MG, Machete, Chainsaw, Sniper Rifle, Molotov, Goalie Mask).
    `ok` lists the confirmed fields ('all' = whole card); every other field shows
-   "(guess)" in the UI.
+   "(guess)" in the UI. As of 2026-11-27 Chris has confirmed every card, so all are 'all'.
    r=[min,max] range, d=dice, a=accuracy (hit on a+), dmg=damage,
    door: 'quiet'|'noisy'|null, loud=attack makes noise, ammo: light|heavy (Plenty of Ammo),
    modes: alternative stat sets on one card (first one is the default) */
 const EQUIP=[
   // Melee
-  {n:'Axe',          k:'melee',  r:[0,0], d:1, a:4, dmg:2, door:'quiet', ok:['r']},
+  {n:'Axe',          k:'melee',  r:[0,0], d:1, a:4, dmg:2, door:'quiet', ok:'all'},
   {n:'Baseball Bat', k:'melee',  r:[0,0], d:1, a:3, dmg:1, ok:'all'},
-  {n:'Chainsaw',     k:'melee',  r:[0,0], d:5, a:5, dmg:2, door:'noisy', loud:true, ok:['r','door','loud']},
+  {n:'Chainsaw',     k:'melee',  r:[0,0], d:5, a:5, dmg:2, door:'noisy', loud:true, ok:'all'},
   {n:'Crowbar',      k:'melee',  r:[0,0], d:1, a:4, dmg:1, door:'quiet', ok:'all'},
   {n:'Fire Axe',     k:'melee',  r:[0,0], d:1, a:4, dmg:2, door:'noisy', ok:'all'},
   {n:'Katana',       k:'melee',  r:[0,0], d:2, a:4, dmg:1, ok:'all'},
-  {n:'Machete',      k:'melee',  r:[0,0], d:1, a:4, dmg:2, dual:true, ok:['r','d','dmg','dual']},
+  {n:'Machete',      k:'melee',  r:[0,0], d:1, a:4, dmg:2, dual:true, ok:'all'},
   {n:'Pan',          k:'melee',  r:[0,0], d:1, a:6, dmg:1, ok:'all'},
   // Ranged
   {n:'Pistol',       k:'ranged', r:[0,1], d:1, a:4, dmg:1, dual:true, loud:true, ammo:'light', ok:'all'},
   {n:'Evil Twins',   k:'ranged', r:[0,1], d:2, a:4, dmg:1, loud:true, ammo:'light', note:'Counts as a single weapon (not dual). Found in a pimp mobile', ok:'all'},
-  {n:"Ma's Shotgun", k:'ranged', r:[0,1], d:2, a:3, dmg:2, loud:true, ammo:'heavy', reload:true, note:'Gun or blade, your pick each attack. Found in a pimp mobile', ok:'all',
-     modes:{Gun:{}, Blade:{r:[0,0], d:1, loud:false, ammo:null}}},
+  {n:"Ma's Shotgun", k:'ranged', r:[0,1], d:2, a:3, dmg:2, loud:true, ammo:'heavy', reload:true, note:'Gun or blade, your pick each attack. Found in a pimp mobile',
+     modes:{Gun:{}, Blade:{r:[0,0], d:1, loud:false, ammo:null}}, ok:'all'},
   {n:'Rifle',        k:'ranged', r:[1,3], d:1, a:3, dmg:1, loud:true, ammo:'light', note:'+ Scope = Sniper Rifle', ok:'all'},
   {n:'Sawed-Off',    k:'ranged', r:[0,1], d:2, a:3, dmg:1, dual:true, loud:true, ammo:'heavy', reload:true, ok:'all'},
   {n:'Shotgun',      k:'ranged', r:[0,1], d:2, a:4, dmg:2, loud:true, ammo:'heavy', ok:'all'},
-  {n:'Sub-MG',       k:'ranged', r:[0,1], d:3, a:5, dmg:1, dual:true, loud:true, ok:['r','d','dmg','dual','loud']},
+  {n:'Sub-MG',       k:'ranged', r:[0,1], d:3, a:5, dmg:1, dual:true, loud:true, ok:'all'},
   // Combos
   {n:'Sniper Rifle', k:'combo',  r:[1,3], d:1, a:3, dmg:1, loud:true, ammo:'light', note:'Rifle + Scope (no action to combine). Same stats as the Rifle, but you choose targets freely', ok:'all'},
-  {n:'Molotov',      k:'combo',  r:[1,2], molotov:true, loud:true, note:'Glass Bottle + Gasoline (no action to combine). Kills EVERYTHING in the target zone, survivors and Abomination included, then discard', ok:['note']},
+  {n:'Molotov',      k:'combo',  r:[1,2], molotov:true, loud:true, note:'Glass Bottle + Gasoline (no action to combine). Kills EVERYTHING in the target zone, survivors and Abomination included, then discard', ok:'all'},
   // Other
   {n:'Plenty of Ammo (light)', k:'item', note:'Reroll all dice of a ranged action once with the Pistol(s), Evil Twins or Rifle. The new result replaces the old one', ok:'all'},
   {n:'Plenty of Ammo (heavy)', k:'item', note:'Reroll all dice of a ranged action once with the Sawed-Off(s), Shotgun or Ma\'s Shotgun. The new result replaces the old one', ok:'all'},
@@ -761,7 +761,7 @@ function withMode(e,m){ return e&&e.modes ? Object.assign({},e,e.modes[m]||e.mod
 function perMode(e,fn){ return e.modes ? modeList(e).map(m=>m+' '+fn(withMode(e,m))).join(' / ') : fn(e); }
 function statLine(e){
   if(!isWeapon(e)) return e.note||'';
-  if(e.molotov) return 'R'+rangeTxt(e)+q(e,'r')+' &middot; kills all in zone';
+  if(e.molotov) return 'R'+rangeTxt(e)+q(e,'r')+' &middot; Special &middot; Dmg All';
   return 'R'+perMode(e,rangeTxt)+q(e,'r')+' &middot; '+perMode(e,x=>x.d+'d')+q(e,'d')+' '+e.a+'+'+q(e,'a')+' &middot; Dmg '+e.dmg+q(e,'dmg')+(e.dual?' &middot; dual'+q(e,'dual'):'');
 }
 function killsTxt(dmg){
@@ -792,7 +792,7 @@ function renderCatalogue(){
       if(e.ammo)notes.push((e.ammo==='light'?'Light ammo':'Heavy ammo')+q(e,'ammo'));
       if(e.note)notes.push(esc(e.note)+q(e,'note'));
       const w=isWeapon(e)&&!e.molotov;
-      h+='<tr><td class="n">'+esc(e.n)+'</td><td>'+(e.r?perMode(e,rangeTxt)+q(e,'r'):'')+'</td><td>'+(w?perMode(e,x=>''+x.d)+q(e,'d'):'')+'</td><td>'+(w?e.a+'+'+q(e,'a'):'')+'</td><td>'+(w?e.dmg+q(e,'dmg'):'')+'</td><td>'+notes.join('. ')+'</td></tr>';
+      h+='<tr><td class="n">'+esc(e.n)+'</td><td>'+(e.r?perMode(e,rangeTxt)+q(e,'r'):'')+'</td><td>'+(e.molotov?'Special':w?perMode(e,x=>''+x.d)+q(e,'d'):'')+'</td><td>'+(e.molotov?'Special':w?e.a+'+'+q(e,'a'):'')+'</td><td>'+(e.molotov?'All':w?e.dmg+q(e,'dmg'):'')+'</td><td>'+notes.join('. ')+'</td></tr>';
     });
   });
   document.getElementById('catBody').innerHTML=h+'</table><div class="small" style="margin-top:8px;">Ranged weapons are noisy; melee weapons are silent unless noted. Light Plenty of Ammo covers Pistol, Evil Twins and Rifle; heavy covers Sawed-Off, Shotgun and Ma\'s Shotgun.</div>';
@@ -1163,9 +1163,32 @@ function applyWeapon(){
   document.getElementById('hitBox').innerHTML=''; lastHit=null;
   renderLoaded();
 }
+var showAllWpn=false; // escape hatch: full catalogue even when a shooter is set
 function pickWeapon(name){
+  if(name==='__all'){ showAllWpn=true; renderLoaded(); return; }
+  if(name==='__hands'){ showAllWpn=false; autoLoadHands(); renderLoaded(); return; }
+  const m=/^hand:(\d|both)$/.exec(name), si=shooterIdx();
+  if(m&&si>=0){
+    const s=survivors[si], k=m[1]==='both'?0:+m[1], e=eq(s.inv[k]);
+    wpn={name:e.n, dual:m[1]==='both', who:s.name}; applyWeapon(); return;
+  }
   wpn = name ? {name:name, dual:false, who:null} : null;
   applyWeapon();
+}
+/* weapons the shooter can actually attack with: the two Hand slots */
+function handWeapons(s){
+  const out=[];
+  [0,1].forEach(k=>{ const e=eq(s.inv[k]); if(isWeapon(e)) out.push({k:k, e:e}); });
+  const both=out.length===2 && out[0].e.n===out[1].e.n && out[0].e.dual;
+  return {list:out, both:both};
+}
+/* when the shooter changes, load the best weapon in their hands (dual pair first) */
+function autoLoadHands(){
+  const si=shooterIdx(); if(si<0||showAllWpn)return;
+  const s=survivors[si], H=handWeapons(s);
+  if(wpn&&wpn.who===s.name&&H.list.some(h=>h.e.n===wpn.name))return;
+  if(!H.list.length){ wpn=null; applyWeapon(); return; }
+  const h=H.list[0]; wpn={name:h.e.n, dual:H.both, who:s.name}; applyWeapon();
 }
 function setMode(m){ if(!curWpn())return; wpn.mode=m; applyWeapon(); }
 function setDual(on){ if(!curWpn())return; wpn.dual=on && !!curWpn().dual; applyWeapon(); }
@@ -1176,16 +1199,29 @@ function loadFromHand(i,k){
 }
 function renderLoaded(){
   const e=curWpn();
-  document.getElementById('wpnPick').innerHTML='<option value="">Manual (no weapon)</option>'+equipOptions(e?e.n:'',true).html;
+  const si=shooterIdx(), sv=si>=0?survivors[si]:null;
+  let opts;
+  if(sv&&!showAllWpn){
+    const H=handWeapons(sv), tags=['Hand 1','Hand 2'];
+    const cur=e? (wpn.dual&&H.both?'hand:both':(H.list.find(h=>h.e.n===e.n)||{}).k) : undefined;
+    opts=(H.list.length?'':'<option value="" selected>'+esc(sv.name)+' has no weapon in hand</option>')+
+      H.list.map(h=>'<option value="hand:'+h.k+'"'+(cur===h.k?' selected':'')+'>'+tags[h.k]+': '+esc(h.e.n)+'</option>').join('')+
+      (H.both?'<option value="hand:both"'+(cur==='hand:both'?' selected':'')+'>Both hands: Dual '+esc(H.list[0].e.n)+'</option>':'')+
+      (e&&cur===undefined?'<option value="" selected>'+esc(e.n)+' (not in hand)</option>':'')+
+      '<option value="__all">Show all weapons&hellip;</option>';
+  } else {
+    opts='<option value="">Manual (no weapon)</option>'+equipOptions(e?e.n:'',true).html+(sv?'<option value="__hands">Only '+esc(sv.name)+'\'s hands</option>':'');
+  }
+  document.getElementById('wpnPick').innerHTML=opts;
   const dc=document.getElementById('dualChk');
-  dc.checked=!!(wpn&&wpn.dual); dc.disabled=!(e&&e.dual);
+  dc.checked=!!(wpn&&wpn.dual); dc.disabled=!(e&&e.dual) || !!(sv&&!showAllWpn&&!handWeapons(sv).both);
   const mp=document.getElementById('modePick'), ml=e&&modeList(e);
   mp.style.display=ml?'':'none';
   if(ml) mp.innerHTML=ml.map(m=>'<option'+(m===(wpn.mode||ml[0])?' selected':'')+'>'+m+'</option>').join('');
   const box=document.getElementById('loadedBox');
   if(!e){ box.innerHTML=''; return; }
   let x;
-  if(e.molotov) x='Range '+rangeTxt(e)+q(e,'r')+'. No roll needed: <b>everything</b> in the target zone dies, survivors included. Discard it after. Noisy.';
+  if(e.molotov) x='Range '+rangeTxt(e)+q(e,'r')+' &middot; Dice: Special &middot; Accuracy: Special &middot; Damage: All. No roll needed: <b>everything</b> in the target zone dies, survivors included. Discard it after. Noisy.';
   else x='Range '+rangeTxt(e)+q(e,'r')+' &middot; '+e.d+' di'+(e.d>1?'ce':'e')+q(e,'d')+(wpn.dual?' &times; 2':'')+' at '+e.a+'+'+q(e,'a')+' &middot; Damage '+e.dmg+q(e,'dmg')+' ('+killsTxt(e.dmg)+')'+
       (e.loud?'. Noisy':'. Silent')+q(e,'loud')+(e.reload?'. 1 action to reload, free in End Phase':'')+
       (e.ammo?'. Plenty of Ammo ('+e.ammo+') lets you reroll'+q(e,'ammo'):'')+(e.note?'. '+esc(e.note)+q(e,'note'):'')+'.'+
@@ -1284,9 +1320,10 @@ function applyHits(){
 /* ---------- who is rolling: tints the Dice tab and receives the XP ---------- */
 var shooter=load('shooter',null); // survivor name (var: renderSurv may run before this line)
 function shooterIdx(){ return shooter==null?-1:survivors.findIndex(s=>s.name===shooter); }
-function setShooter(name){ shooter=name||null; save('shooter',shooter); renderShooter(); }
+function setShooter(name){ shooter=name||null; save('shooter',shooter); showAllWpn=false; renderShooter(); autoLoadHands(); renderLoaded(); }
 function shooterXp(d){ const i=shooterIdx(); if(i<0)return; chgXp(i,d); renderShooter(); }
 function renderShooter(){
+  try{ renderLoaded(); }catch(err){} // hands may have changed (before init, wpn isn't defined yet)
   const bar=document.getElementById('shooterBar'), card=document.getElementById('diceCard');
   if(!bar)return;
   const i=shooterIdx(), s=i>=0?survivors[i]:null, p=s&&presetOf(s);
