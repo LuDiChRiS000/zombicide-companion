@@ -147,6 +147,14 @@ details .body li{margin-bottom:4px;}
 .shooter .sx{font-size:.78rem; color:var(--dim); white-space:nowrap;}
 .shooter .sx b{color:var(--text);}
 .shooter button{background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:5px 9px; font-weight:800; font-size:.78rem; cursor:pointer; font-family:inherit;}
+.dangerui{box-shadow:inset 0 0 0 2px var(--red), 0 0 18px rgba(231,76,60,.35);}
+.dangerui .zonebox{border-color:var(--red);}
+.wpnwarn{border-radius:10px; padding:9px 12px; margin:8px 0 2px; font-size:.84rem; line-height:1.45; display:flex; gap:9px;}
+.wpnwarn .wi{font-size:1.15rem; line-height:1.2;}
+.wpnwarn.red{background:rgba(231,76,60,.16); border:1px solid var(--red); color:var(--text);}
+.wpnwarn.red b.t{color:var(--red);}
+.wpnwarn.amber{background:rgba(241,196,15,.10); border:1px solid var(--yellow); color:var(--text);}
+.wpnwarn.amber b.t{color:var(--yellow);}
 .zonebox{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0 4px;}
 .zonebox .zl{font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); font-weight:800;}
 .zrow{display:flex; align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--border);}
@@ -453,6 +461,7 @@ body.nohints .hint{display:none;}
       </div>
       <div id="zoneRows"></div>
     </div>
+    <div id="warnBox"></div>
     <div class="row" style="justify-content:space-around; margin:10px 0;">
       <div style="text-align:center;">
         <div class="small" style="margin-bottom:6px;">DICE</div>
@@ -1149,6 +1158,46 @@ function chgAcc(d){ accN=Math.max(2,Math.min(6,accN+d)); save('accN',accN); docu
 /* loaded weapon: {name, dual, who} */
 let wpn=load('wpn',null), rerolls=0;
 function curWpn(){ return wpn && withMode(eq(wpn.name),wpn.mode); }
+/* Before rolling: can this weapon actually kill what's in the target zone? */
+function renderWarn(){
+  const box=document.getElementById('warnBox'), card=document.getElementById('diceCard');
+  if(!box)return;
+  let e=null; try{ e=curWpn(); }catch(err){}
+  const off=()=>{ box.innerHTML=''; card.classList.remove('dangerui'); };
+  if(!e||e.molotov||!zoneTotal()) return off();
+  const dmg=e.dmg, need=k=>ZT.find(z=>z.k===k).need;
+  const immune=['f','a'].filter(k=>zone[k]&&dmg<need(k));
+  if(!immune.length) return off();
+  const name=k=>{ const z=ZT.find(x=>x.k===k); return zone[k]===1?(k==='a'?'the Abomination':'the Fatty'):'the '+z.pl; };
+  const immTxt=immune.map(name).join(' or ');
+  const needTxt=immune.includes('f')?'2 damage for a Fatty':'';
+  const needA=immune.includes('a')?'3 damage (or a Molotov) for the Abomination':'';
+  const needs=[needTxt,needA].filter(Boolean).join(' and ');
+  const killable=['w','r','f','a'].filter(k=>zone[k]&&dmg>=need(k));
+  const mode=hitMode(e), wName=esc(e.n)+(e.modes?' ('+(wpn.mode||modeList(e)[0])+')':'');
+  let cls, title, body;
+  if(!killable.length){
+    cls='red'; title='This '+wName+' can\'t kill anything here.';
+    body='It does '+dmg+' damage; you need '+needs+'. Every hit is wasted'+(zone.s&&mode==='ranged'?' (and the first hits land on the Survivors in that zone)':'')+'. Get a better weapon, bring a friend, or leave.';
+  } else if(mode==='ranged'){
+    // what dies before the hits hit the wall: Walkers, and Fatties when only the Abomination is immune
+    const before=['w','f'].filter(k=>zone[k]&&dmg>=need(k));
+    const bTxt=before.map(k=>zone[k]+' '+(zone[k]===1?ZT.find(z=>z.k===k).n:ZT.find(z=>z.k===k).pl)).join(' and ');
+    const shielded=zone.r>0;
+    const walls=immune.length;
+    cls=before.length?'amber':'red';
+    title=before.length?'Only the '+before.map(k=>zone[k]===1?ZT.find(z=>z.k===k).n:ZT.find(z=>z.k===k).pl).join(' and ')+' can be killed.':'This shot is wasted.';
+    body='It does '+dmg+' damage; you need '+needs+'. '+
+      (before.length?'Hits kill the '+bTxt+' first, then every hit after that bounces off '+immTxt+'.':'Ranged hits go to '+immTxt+' first and bounce off.')+
+      (shielded&&walls?' The '+zone.r+' Runner'+(zone.r>1?'s':'')+' behind '+(zone.f+zone.a>1?'them':'it')+' can\'t be hit.':'')+
+      (!before.length?' You need a better weapon.':'');
+  } else {
+    cls='amber'; title='You can\'t hurt '+immTxt+' with this.';
+    body='It does '+dmg+' damage; you need '+needs+'. Put your hits on the '+killable.map(k=>ZT.find(z=>z.k===k).pl).join(' and ')+' instead.';
+  }
+  box.innerHTML='<div class="wpnwarn '+cls+'"><span class="wi">'+(cls==='red'?'&#9888;&#65039;':'&#9888;')+'</span><div><b class="t">'+title+'</b> '+body+'</div></div>';
+  card.classList.toggle('dangerui',cls==='red');
+}
 function applyWeapon(){
   const e=curWpn();
   if(e && !e.molotov){
@@ -1161,7 +1210,7 @@ function applyWeapon(){
   document.getElementById('diceWrap').innerHTML=''; document.getElementById('diceRes').innerHTML='';
   document.getElementById('rerollBtn').style.display='none'; rerolls=0;
   document.getElementById('hitBox').innerHTML=''; lastHit=null;
-  renderLoaded();
+  renderLoaded(); renderWarn();
 }
 var showAllWpn=false; // escape hatch: full catalogue even when a shooter is set
 function pickWeapon(name){
@@ -1241,6 +1290,7 @@ function zoneTotal(){ return ZT.reduce((t,z)=>t+zone[z.k],0); }
 function chgZone(k,d){ zone[k]=Math.max(0,Math.min(30,zone[k]+d)); save('zone',zone); lastHit=null; renderZone(); document.getElementById('hitBox').innerHTML=''; }
 function clearZone(){ zone={s:0,w:0,r:0,f:0,a:0}; save('zone',zone); lastHit=null; renderZone(); document.getElementById('hitBox').innerHTML=''; }
 function renderZone(){
+  renderWarn();
   document.getElementById('zoneRows').innerHTML=ZT.map(z=>
     '<div class="zrow"><span class="zn">'+z.pl+' <small>'+(z.need?'needs '+z.need+' dmg':z.tip)+'</small></span>'+
     '<button onclick="chgZone(\''+z.k+'\',-1)" aria-label="Fewer '+z.pl+'">&minus;</button>'+
