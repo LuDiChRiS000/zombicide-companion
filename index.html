@@ -140,6 +140,13 @@ details .body li{margin-bottom:4px;}
 .loaded .ln{font-weight:900; font-size:1rem;}
 .loaded .lx{font-size:.76rem; color:var(--dim); margin-top:3px; line-height:1.45;}
 .cattbl{width:100%; border-collapse:collapse; font-size:.74rem;}
+.dicetint{background:linear-gradient(160deg,rgba(var(--fig),.34),rgba(var(--fig),.08) 55%),var(--panel); border-color:rgba(var(--fig),.75);}
+.shooter{display:flex; align-items:center; gap:8px; flex-wrap:wrap; background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:7px 10px; margin-bottom:8px;}
+.shooter .sw{width:14px; height:14px; border-radius:50%; background:rgb(var(--fig,120,120,120)); box-shadow:0 0 0 2px rgba(255,255,255,.15);}
+.shooter select{flex:1; min-width:120px; padding:6px 8px; font-size:.9rem;}
+.shooter .sx{font-size:.78rem; color:var(--dim); white-space:nowrap;}
+.shooter .sx b{color:var(--text);}
+.shooter button{background:var(--panel); border:1px solid var(--border); color:var(--text); border-radius:7px; padding:5px 9px; font-weight:800; font-size:.78rem; cursor:pointer; font-family:inherit;}
 .zonebox{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0 4px;}
 .zonebox .zl{font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); font-weight:800;}
 .zrow{display:flex; align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--border);}
@@ -430,8 +437,9 @@ body.nohints .hint{display:none;}
 
 <!-- ============ DICE ============ -->
 <div class="screen" id="scr-dice">
-  <div class="card">
+  <div class="card" id="diceCard">
     <h2>Dice Roller</h2>
+    <div class="shooter" id="shooterBar"></div>
     <div class="row" style="margin-bottom:8px;">
       <select id="wpnPick" onchange="pickWeapon(this.value)" style="flex:1; min-width:0;"></select>
       <select id="modePick" onchange="setMode(this.value)" style="display:none;"></select>
@@ -1066,6 +1074,7 @@ function resetAllActions(noSnap){ if(!noSnap) snap('Refresh actions'); survivors
 /* Remember which panels are open per survivor, so re-rendering (XP, wounds, actions) doesn't collapse them */
 const openPanels=new WeakMap();
 function renderSurv(){
+  renderShooter();
   const list=document.getElementById('survList'); list.innerHTML='';
   if(!survivors.length){ list.innerHTML='<div class="small" style="text-align:center; padding:20px;">No survivors yet &mdash; add your team above.</div>'; return; }
   survivors.forEach((s,i)=>{
@@ -1162,7 +1171,7 @@ function setMode(m){ if(!curWpn())return; wpn.mode=m; applyWeapon(); }
 function setDual(on){ if(!curWpn())return; wpn.dual=on && !!curWpn().dual; applyWeapon(); }
 function loadFromHand(i,k){
   const s=survivors[i], e=eq(s.inv[k]); if(!isWeapon(e))return;
-  wpn={name:e.n, dual:!!e.dual && s.inv[1-k]===e.n, who:s.name};
+  wpn={name:e.n, dual:!!e.dual && s.inv[1-k]===e.n, who:s.name}; setShooter(s.name);
   applyWeapon(); show('dice');
 }
 function renderLoaded(){
@@ -1240,7 +1249,7 @@ function resolveHits(hits,dmg,mode){
 function hitMode(e){ return e.molotov?'molotov' : (e.r[1]===0 || e.n==='Sniper Rifle') ? 'free' : 'ranged'; }
 function renderHits(hits,e){
   const box=document.getElementById('hitBox');
-  if(!zoneTotal()){ box.innerHTML=hits&&e?'<div class="small" style="text-align:center; margin-top:6px;">Fill in the target zone above to see exactly who gets hit.</div>':''; lastHit=null; return; }
+  if(!zoneTotal()){ box.innerHTML=hits&&e?'<div class="small" style="text-align:center; margin-top:6px;">Fill in the target zone above to see exactly who gets hit'+(shooterIdx()>=0?', or tap +1 per Walker, Runner or Fatty killed (+5 for the Abomination) at the top':'')+'.</div>':''; lastHit=null; return; }
   if(!e){ box.innerHTML='<div class="small" style="text-align:center; margin-top:6px;">Pick a weapon to work out who gets hit (it needs the damage value).</div>'; lastHit=null; return; }
   const mode=hitMode(e);
   if(mode!=='molotov'&&!hits){ box.innerHTML=''; lastHit=null; return; }
@@ -1256,16 +1265,37 @@ function renderHits(hits,e){
   }
   if(R.wounds) h+='<div class="bad" style="margin-top:4px;">'+(mode==='molotov'?'Every Survivor in the zone is eliminated.':R.wounds+' wound'+(R.wounds>1?'s':'')+' to Survivors in the zone'+(R.kill.s?' ('+R.kill.s+' eliminated if unhurt)':'')+'. You choose who takes them; an already-wounded Survivor dies from 1.')+'</div>';
   else if(mode==='molotov'&&zone.s) h+='<div class="bad" style="margin-top:4px;">Every Survivor in the zone is eliminated.</div>';
-  if(R.xp) h+='<div style="margin-top:4px;">Shooter gains <b>'+R.xp+' XP</b>.</div>';
-  if(rm.length||R.kill.s) h+='<button class="btn sec" style="margin-top:8px; padding:6px 12px; font-size:.8rem;" onclick="applyHits()">Update the zone above</button>';
+  const si=shooterIdx(), who=si>=0?esc(survivors[si].name):'';
+  if(R.xp) h+='<div style="margin-top:4px;">'+(who||'The shooter')+' gains <b>'+R.xp+' XP</b>'+(who?'':' (pick who is rolling at the top to hand it out)')+'.</div>';
+  if(rm.length||R.kill.s) h+='<button class="btn" style="margin-top:8px; padding:7px 12px; font-size:.82rem;" onclick="applyHits()">'+(mode==='free'?'Use this: remove':'Remove')+' the dead'+(R.xp&&who?' &amp; give '+who+' '+R.xp+' XP':'')+'</button>'+
+    (mode==='free'?'<div class="small" style="margin-top:4px;">Chose differently? Adjust the zone yourself and use +1 / +5 at the top.</div>':'');
   h+='</div>';
   box.innerHTML=h;
 }
 function applyHits(){
   if(!lastHit)return;
-  ZT.forEach(z=>{ zone[z.k]=Math.max(0,zone[z.k]-lastHit.kill[z.k]); });
+  const R=lastHit, si=shooterIdx();
+  ZT.forEach(z=>{ zone[z.k]=Math.max(0,zone[z.k]-R.kill[z.k]); });
   save('zone',zone); lastHit=null; renderZone();
-  document.getElementById('hitBox').innerHTML='<div class="small" style="text-align:center; margin-top:6px;">Zone updated. Roll again for your next action.</div>';
+  let msg='Zone updated.';
+  if(R.xp&&si>=0){ const before=survivors[si].xp; chgXp(si,R.xp); msg+=' '+esc(survivors[si].name)+' +'+(survivors[si].xp-before)+' XP (now '+survivors[si].xp+').'; renderShooter(); }
+  document.getElementById('hitBox').innerHTML='<div class="small" style="text-align:center; margin-top:6px;">'+msg+' Roll again for your next action.</div>';
+}
+/* ---------- who is rolling: tints the Dice tab and receives the XP ---------- */
+var shooter=load('shooter',null); // survivor name (var: renderSurv may run before this line)
+function shooterIdx(){ return shooter==null?-1:survivors.findIndex(s=>s.name===shooter); }
+function setShooter(name){ shooter=name||null; save('shooter',shooter); renderShooter(); }
+function shooterXp(d){ const i=shooterIdx(); if(i<0)return; chgXp(i,d); renderShooter(); }
+function renderShooter(){
+  const bar=document.getElementById('shooterBar'), card=document.getElementById('diceCard');
+  if(!bar)return;
+  const i=shooterIdx(), s=i>=0?survivors[i]:null, p=s&&presetOf(s);
+  if(s&&p&&p.fig){ card.style.setProperty('--fig',p.fig); bar.style.setProperty('--fig',p.fig); card.classList.add('dicetint'); }
+  else { card.style.removeProperty('--fig'); bar.style.removeProperty('--fig'); card.classList.remove('dicetint'); }
+  const opts=survivors.map(x=>'<option value="'+esc(x.name)+'"'+(x===s?' selected':'')+(x.wounds>=2?' disabled':'')+'>'+esc(x.name)+(x.wounds>=2?' (eliminated)':'')+'</option>').join('');
+  bar.innerHTML='<span class="sw"></span><select onchange="setShooter(this.value)" aria-label="Who is rolling">'+
+    '<option value=""'+(s?'':' selected')+'>Who is rolling?</option>'+opts+'</select>'+
+    (s?'<span class="sx">XP <b>'+s.xp+'</b> &middot; '+levelOf(s.xp).name+'</span><button onclick="shooterXp(1)" title="Killed a Walker, Runner or Fatty">+1</button><button onclick="shooterXp(5)" title="Killed the Abomination">+5</button>':'');
 }
 let rolling=false;
 function rollDice(isReroll){
@@ -1800,7 +1830,7 @@ function renderGame(){
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
 document.body.insertAdjacentHTML('beforeend','<datalist id="skillNamesAll">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>');
-renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded(); renderZone();
+renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded(); renderZone(); renderShooter();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
