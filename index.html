@@ -140,6 +140,10 @@ details .body li{margin-bottom:4px;}
 .loaded .ln{font-weight:900; font-size:1rem;}
 .loaded .lx{font-size:.76rem; color:var(--dim); margin-top:3px; line-height:1.45;}
 .cattbl{width:100%; border-collapse:collapse; font-size:.74rem;}
+.hitorder{margin:4px 0 6px; padding-left:22px; font-size:.86rem; line-height:1.6;}
+.hitorder li::marker{color:var(--accent2); font-weight:900;}
+.hitref td:nth-child(2),.hitref td:nth-child(3){font-weight:800; text-align:center;}
+.hitref th:nth-child(2),.hitref th:nth-child(3){text-align:center;}
 .cattbl th{text-align:left; color:var(--dim); font-weight:700; padding:4px 3px; border-bottom:1px solid var(--border); text-transform:uppercase; font-size:.6rem;}
 .cattbl .wguess{display:block; white-space:normal;}
 .cattbl td:last-child .wguess{display:inline;}
@@ -441,6 +445,27 @@ body.nohints .hint{display:none;}
     </div>
     <div class="hint">Read your weapon card: <b>Dice</b> is how many to roll, <b>Accuracy</b> is the number each die needs (e.g. 4+). Every die that makes it is a hit, and each hit deals the card's <b>Damage</b> to one zombie. Walkers and Runners need 1 damage, Fatties 2, the Abomination 3.</div>
     <div class="small" style="text-align:center; margin-top:10px;">Pick a weapon above, or tap one in a survivor's hand on the Survivors tab. You can still tweak dice &amp; accuracy for skills (+1 die, +1 to rolls). Green dice are hits. <b>Reroll all</b> is for Plenty of Ammo or Lucky: the new roll replaces the old one.</div>
+  </div>
+  <div class="card">
+    <h2>Who Gets Hit</h2>
+    <h3 style="margin-top:4px;">Damage needed</h3>
+    <table class="cattbl hitref">
+      <tr><th>Zombie</th><th>Damage</th><th>XP</th><th>Notes</th></tr>
+      <tr><td class="n">Walker</td><td>1</td><td>1</td><td></td></tr>
+      <tr><td class="n">Runner</td><td>1</td><td>1</td><td>2 actions per Zombie phase</td></tr>
+      <tr><td class="n">Fatty</td><td>2</td><td>1</td><td>Spawns with 2 Walkers</td></tr>
+      <tr><td class="n">Abomination</td><td>3</td><td>5</td><td>Or a Molotov. Spawns alone</td></tr>
+    </table>
+    <div class="small" style="margin-top:6px;">Each hit kills <b>one</b> target; extra damage is wasted. A hit with too little damage does nothing: six 1-damage hits on a Fatty just bounce off.</div>
+    <h3>Ranged target order</h3>
+    <ol class="hitorder">
+      <li><b>Survivors</b> in the target zone (not the shooter)</li>
+      <li><b>Walkers</b></li>
+      <li><b>Fatties &amp; Abominations</b></li>
+      <li><b>Runners</b></li>
+    </ol>
+    <div class="small">Hits go down the list: every target in a group must die before the next group takes a hit. So a Fatty hit by a 1-damage gun soaks up the rest and shields the Runners behind it. You can shoot through occupied zones without hitting anyone in them.</div>
+    <div class="small" style="margin-top:6px;"><b>Exceptions:</b> in <b>melee</b> you assign hits however you like. A <b>Sniper Rifle</b> also picks its targets freely. A <b>Molotov</b> kills everything in the zone, Survivors included.</div>
   </div>
   <div class="card">
     <h2>Equipment Catalogue</h2>
@@ -1130,7 +1155,8 @@ function renderLoaded(){
   if(e.molotov) x='Range '+rangeTxt(e)+q(e,'r')+'. No roll needed: <b>everything</b> in the target zone dies, survivors included. Discard it after. Noisy.';
   else x='Range '+rangeTxt(e)+q(e,'r')+' &middot; '+e.d+' di'+(e.d>1?'ce':'e')+q(e,'d')+(wpn.dual?' &times; 2':'')+' at '+e.a+'+'+q(e,'a')+' &middot; Damage '+e.dmg+q(e,'dmg')+' ('+killsTxt(e.dmg)+')'+
       (e.loud?'. Noisy':'. Silent')+q(e,'loud')+(e.reload?'. 1 action to reload, free in End Phase':'')+
-      (e.ammo?'. Plenty of Ammo ('+e.ammo+') lets you reroll'+q(e,'ammo'):'')+(e.note?'. '+esc(e.note)+q(e,'note'):'')+'.';
+      (e.ammo?'. Plenty of Ammo ('+e.ammo+') lets you reroll'+q(e,'ammo'):'')+(e.note?'. '+esc(e.note)+q(e,'note'):'')+'.'+
+      '<br><b style="color:var(--text)">'+(e.r[1]===0?'Melee: you choose who gets hit.':e.n==='Sniper Rifle'?'Sniper: you choose who gets hit.':'Ranged: hits follow the target order below.')+'</b>';
   box.innerHTML='<div class="loaded"><div class="ln">'+(wpn.dual?'Dual ':'')+esc(e.n)+(e.modes?' ('+(wpn.mode||modeList(e)[0])+')':'')+(wpn.who?' <span class="small">&middot; '+esc(wpn.who)+'</span>':'')+'</div><div class="lx">'+x+'</div></div>';
 }
 let rolling=false;
