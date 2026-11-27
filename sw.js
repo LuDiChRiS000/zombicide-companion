@@ -1,5 +1,5 @@
 /* Offline support. Bump VERSION whenever any cached file changes. */
-const VERSION = 'zc-v6';
+const VERSION = 'zc-v7';
 const SHELL = [
   './',
   './index.html',

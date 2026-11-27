@@ -140,6 +140,21 @@ details .body li{margin-bottom:4px;}
 .loaded .ln{font-weight:900; font-size:1rem;}
 .loaded .lx{font-size:.76rem; color:var(--dim); margin-top:3px; line-height:1.45;}
 .cattbl{width:100%; border-collapse:collapse; font-size:.74rem;}
+.zonebox{background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:8px 10px; margin:8px 0 4px;}
+.zonebox .zl{font-size:.7rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); font-weight:800;}
+.zrow{display:flex; align-items:center; gap:8px; padding:4px 0; border-top:1px solid var(--border);}
+.zrow:first-child{border-top:none;}
+.zrow .zn{flex:1; font-size:.88rem; font-weight:700;}
+.zrow .zn small{font-weight:400; color:var(--dim); font-size:.7rem;}
+.zrow button{width:34px; height:34px; border-radius:8px; border:1px solid var(--border); background:var(--panel); color:var(--text); font-size:1.15rem; cursor:pointer;}
+.zrow .zv{min-width:24px; text-align:center; font-weight:900; font-size:1.05rem;}
+.zrow .zv.zero{color:var(--dim); font-weight:400;}
+.hitres{background:var(--panel2); border:1px solid var(--green); border-radius:10px; padding:10px 12px; margin-top:10px; font-size:.84rem; line-height:1.5;}
+.hitres.free{border-color:var(--yellow);}
+.hitres h4{margin:0 0 4px; font-size:.78rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim);}
+.hitres ol{margin:4px 0 6px; padding-left:20px;}
+.hitres .rm{font-weight:800; color:var(--text);}
+.hitres .bad{color:var(--red); font-weight:800;}
 .hitorder{margin:4px 0 6px; padding-left:22px; font-size:.86rem; line-height:1.6;}
 .hitorder li::marker{color:var(--accent2); font-weight:900;}
 .hitref td:nth-child(2),.hitref td:nth-child(3){font-weight:800; text-align:center;}
@@ -423,6 +438,13 @@ body.nohints .hint{display:none;}
       <label class="small" style="display:flex; align-items:center; gap:4px;"><input type="checkbox" id="dualChk" onchange="setDual(this.checked)">Dual</label>
     </div>
     <div id="loadedBox"></div>
+    <div class="zonebox">
+      <div class="row" style="justify-content:space-between;">
+        <div class="zl">Target zone <span class="small" style="text-transform:none; letter-spacing:0;">&middot; what's in it right now</span></div>
+        <button class="btn sec" style="padding:4px 10px; font-size:.72rem;" onclick="clearZone()">Clear</button>
+      </div>
+      <div id="zoneRows"></div>
+    </div>
     <div class="row" style="justify-content:space-around; margin:10px 0;">
       <div style="text-align:center;">
         <div class="small" style="margin-bottom:6px;">DICE</div>
@@ -439,6 +461,7 @@ body.nohints .hint{display:none;}
     </div>
     <div class="dicewrap" id="diceWrap"></div>
     <div class="diceres" id="diceRes"></div>
+    <div id="hitBox"></div>
     <div class="row" style="justify-content:center; margin-top:10px;">
       <button class="btn" style="font-size:1.05rem; padding:12px 34px;" onclick="rollDice()">&#127922; ROLL</button>
       <button class="btn sec" id="rerollBtn" style="font-size:.95rem; padding:12px 18px; display:none;" onclick="rollDice(true)">&#8635; Reroll all</button>
@@ -1128,6 +1151,7 @@ function applyWeapon(){
   save('wpn',wpn);
   document.getElementById('diceWrap').innerHTML=''; document.getElementById('diceRes').innerHTML='';
   document.getElementById('rerollBtn').style.display='none'; rerolls=0;
+  document.getElementById('hitBox').innerHTML=''; lastHit=null;
   renderLoaded();
 }
 function pickWeapon(name){
@@ -1159,15 +1183,99 @@ function renderLoaded(){
       '<br><b style="color:var(--text)">'+(e.r[1]===0?'Melee: you choose who gets hit.':e.n==='Sniper Rifle'?'Sniper: you choose who gets hit.':'Ranged: hits follow the target order below.')+'</b>';
   box.innerHTML='<div class="loaded"><div class="ln">'+(wpn.dual?'Dual ':'')+esc(e.n)+(e.modes?' ('+(wpn.mode||modeList(e)[0])+')':'')+(wpn.who?' <span class="small">&middot; '+esc(wpn.who)+'</span>':'')+'</div><div class="lx">'+x+'</div></div>';
 }
+/* ---------- target zone builder + hit assignment ---------- */
+const ZT=[ // order = ranged priority groups (Fatty & Abomination share a group)
+  {k:'s', n:'Survivor',    pl:'Survivors',     need:null, xp:0, tip:'other survivors (not the shooter)'},
+  {k:'w', n:'Walker',      pl:'Walkers',       need:1, xp:1},
+  {k:'f', n:'Fatty',       pl:'Fatties',       need:2, xp:1},
+  {k:'a', n:'Abomination', pl:'Abominations',  need:3, xp:5},
+  {k:'r', n:'Runner',      pl:'Runners',       need:1, xp:1}
+];
+let zone=load('zone',{s:0,w:0,r:0,f:0,a:0}), lastHit=null;
+function zoneTotal(){ return ZT.reduce((t,z)=>t+zone[z.k],0); }
+function chgZone(k,d){ zone[k]=Math.max(0,Math.min(30,zone[k]+d)); save('zone',zone); lastHit=null; renderZone(); document.getElementById('hitBox').innerHTML=''; }
+function clearZone(){ zone={s:0,w:0,r:0,f:0,a:0}; save('zone',zone); lastHit=null; renderZone(); document.getElementById('hitBox').innerHTML=''; }
+function renderZone(){
+  document.getElementById('zoneRows').innerHTML=ZT.map(z=>
+    '<div class="zrow"><span class="zn">'+z.pl+' <small>'+(z.need?'needs '+z.need+' dmg':z.tip)+'</small></span>'+
+    '<button onclick="chgZone(\''+z.k+'\',-1)" aria-label="Fewer '+z.pl+'">&minus;</button>'+
+    '<span class="zv'+(zone[z.k]?'':' zero')+'">'+zone[z.k]+'</span>'+
+    '<button onclick="chgZone(\''+z.k+'\',1)" aria-label="More '+z.pl+'">+</button></div>').join('');
+}
+function plural(n,z){ return n+' '+(n===1?z.n:z.pl); }
+/* How the hits land. mode: 'ranged' (priority order), 'free' (melee / Sniper: player picks), 'molotov' */
+function resolveHits(hits,dmg,mode){
+  const left=Object.assign({},zone), kill={s:0,w:0,r:0,f:0,a:0};
+  const steps=[]; let wounds=0, wasted=0, h=hits;
+  const zt=k=>ZT.find(z=>z.k===k);
+  if(mode==='molotov'){
+    ZT.forEach(z=>{ kill[z.k]=left[z.k]; });
+    steps.push('Everything in the zone burns.');
+  } else if(mode==='ranged'){
+    // 1. Survivors: 2 wounds each kills
+    if(h&&left.s){ const t=Math.min(h,left.s*2); wounds=t; kill.s=Math.floor(t/2); h-=t; steps.push(t+' hit'+(t>1?'s':'')+' on Survivors = '+t+' wound'+(t>1?'s':'')); }
+    // 2. Walkers
+    if(h&&left.w){ const t=Math.min(h,left.w); kill.w=t; h-=t; steps.push(t+' hit'+(t>1?'s kill ':' kills ')+plural(t,zt('w'))); }
+    // 3. Fatties & Abominations (one group): it must be cleared before Runners get hit
+    if(h&&(left.f||left.a)){
+      const kf=dmg>=2?Math.min(h,left.f):0; h-=kf; kill.f=kf;
+      const ka=dmg>=3?Math.min(h,left.a):0; h-=ka; kill.a=ka;
+      if(kf||ka) steps.push((kf+ka)+' hit'+(kf+ka>1?'s kill ':' kills ')+[kf?plural(kf,zt('f')):'',ka?plural(ka,zt('a')):''].filter(Boolean).join(' and '));
+      if(h&&(left.f>kf||left.a>ka)){ wasted=h; steps.push(h+' hit'+(h>1?'s':'')+(h>1?' bounce':' bounces')+' off the '+(left.a>ka&&dmg<3?(left.f>kf?'Fatty/Abomination wall':'Abomination'):(left.f-kf>1?'Fatties':'Fatty'))+' (need '+(left.a>ka&&dmg<3?3:2)+' damage). Runners behind are safe'); h=0; }
+    }
+    // 4. Runners
+    if(h&&left.r){ const t=Math.min(h,left.r); kill.r=t; h-=t; steps.push(t+' hit'+(t>1?'s kill ':' kills ')+plural(t,zt('r'))); }
+    if(h){ wasted+=h; steps.push(h+' hit'+(h>1?'s':'')+' left over with nothing to hit'); }
+  } else {
+    // free choice: suggest the most useful kills (Abomination, Runners, Fatties, Walkers); never Survivors
+    const pref=['a','r','f','w'];
+    pref.forEach(k=>{ const z=zt(k); if(!h||dmg<z.need)return; const t=Math.min(h,left[k]); if(t){ kill[k]=t; h-=t; } });
+    const cant=pref.filter(k=>left[k]&&dmg<zt(k).need).map(k=>zt(k).pl);
+    if(h) wasted=h;
+    if(cant.length) steps.push(cant.join(' and ')+' need more than '+dmg+' damage, so hits on them do nothing');
+  }
+  const xp=ZT.reduce((t,z)=>t+kill[z.k]*z.xp,0);
+  return {kill:kill, wounds:wounds, wasted:wasted, steps:steps, xp:xp, mode:mode};
+}
+function hitMode(e){ return e.molotov?'molotov' : (e.r[1]===0 || e.n==='Sniper Rifle') ? 'free' : 'ranged'; }
+function renderHits(hits,e){
+  const box=document.getElementById('hitBox');
+  if(!zoneTotal()){ box.innerHTML=hits&&e?'<div class="small" style="text-align:center; margin-top:6px;">Fill in the target zone above to see exactly who gets hit.</div>':''; lastHit=null; return; }
+  if(!e){ box.innerHTML='<div class="small" style="text-align:center; margin-top:6px;">Pick a weapon to work out who gets hit (it needs the damage value).</div>'; lastHit=null; return; }
+  const mode=hitMode(e);
+  if(mode!=='molotov'&&!hits){ box.innerHTML=''; lastHit=null; return; }
+  const R=resolveHits(hits,e.dmg||0,mode); lastHit=R;
+  const rm=ZT.filter(z=>z.k!=='s'&&R.kill[z.k]).map(z=>plural(R.kill[z.k],z));
+  let h='<div class="hitres'+(mode==='free'?' free':'')+'">';
+  if(mode==='free') h+='<h4>'+(e.n==='Sniper Rifle'?'Sniper':'Melee')+': you choose who gets hit</h4><div>Suggested: '+(rm.length?'<span class="rm">kill '+rm.join(', ')+'</span>':'nothing you can kill with '+e.dmg+' damage')+'.</div>';
+  else if(mode==='ranged') h+='<h4>Ranged: hits follow the target order</h4><ol>'+R.steps.map(x=>'<li>'+x+'</li>').join('')+'</ol>';
+  else h+='<h4>Molotov</h4>';
+  if(mode!=='ranged'&&R.steps.length) h+='<div class="small">'+R.steps.join('. ')+'.</div>';
+  if(mode!=='free'||rm.length){
+    h+='<div style="margin-top:4px;"><b>Take off the board:</b> '+(rm.length?'<span class="rm">'+rm.join(', ')+'</span>':'no zombies')+'.</div>';
+  }
+  if(R.wounds) h+='<div class="bad" style="margin-top:4px;">'+(mode==='molotov'?'Every Survivor in the zone is eliminated.':R.wounds+' wound'+(R.wounds>1?'s':'')+' to Survivors in the zone'+(R.kill.s?' ('+R.kill.s+' eliminated if unhurt)':'')+'. You choose who takes them; an already-wounded Survivor dies from 1.')+'</div>';
+  else if(mode==='molotov'&&zone.s) h+='<div class="bad" style="margin-top:4px;">Every Survivor in the zone is eliminated.</div>';
+  if(R.xp) h+='<div style="margin-top:4px;">Shooter gains <b>'+R.xp+' XP</b>.</div>';
+  if(rm.length||R.kill.s) h+='<button class="btn sec" style="margin-top:8px; padding:6px 12px; font-size:.8rem;" onclick="applyHits()">Update the zone above</button>';
+  h+='</div>';
+  box.innerHTML=h;
+}
+function applyHits(){
+  if(!lastHit)return;
+  ZT.forEach(z=>{ zone[z.k]=Math.max(0,zone[z.k]-lastHit.kill[z.k]); });
+  save('zone',zone); lastHit=null; renderZone();
+  document.getElementById('hitBox').innerHTML='<div class="small" style="text-align:center; margin-top:6px;">Zone updated. Roll again for your next action.</div>';
+}
 let rolling=false;
 function rollDice(isReroll){
   if(rolling)return;
   const e=curWpn();
-  if(e&&e.molotov){ document.getElementById('diceRes').innerHTML='<span style="color:var(--orange)">&#128293; No dice. The whole zone burns.</span>'; return; }
+  if(e&&e.molotov){ document.getElementById('diceRes').innerHTML='<span style="color:var(--orange)">&#128293; No dice. The whole zone burns.</span>'; renderHits(0,e); return; }
   rolling=true;
   rerolls=isReroll?rerolls+1:0;
   const wrap=document.getElementById('diceWrap'); wrap.innerHTML='';
-  const res=document.getElementById('diceRes'); res.textContent='';
+  const res=document.getElementById('diceRes'); res.textContent=''; document.getElementById('hitBox').innerHTML='';
   const dies=[];
   const half=(e&&wpn.dual)?Math.ceil(diceN/2):0;
   for(let i=0;i<diceN;i++){
@@ -1189,6 +1297,7 @@ function rollDice(isReroll){
         (hits>0&&e?'<div class="small">'+hits+' &times; '+e.dmg+' damage: '+killsTxt(e.dmg)+'</div>':'')+
         (rerolls?'<div class="small">Reroll #'+rerolls+' (replaces the previous roll)</div>':'');
       document.getElementById('rerollBtn').style.display='';
+      renderHits(hits,e);
       rolling=false;
     }
   },70);
@@ -1691,7 +1800,7 @@ function renderGame(){
 document.getElementById('diceN').textContent=diceN;
 document.getElementById('accN').textContent=accN;
 document.body.insertAdjacentHTML('beforeend','<datalist id="skillNamesAll">'+Object.keys(SKILLS).map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>');
-renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded();
+renderGuide(); renderSurv(); renderPresetSelect(); renderSpawn(); renderMission(); initShare(); updateUndoBtn(); renderCatalogue(); renderLoaded(); renderZone();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 }
