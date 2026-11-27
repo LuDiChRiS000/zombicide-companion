@@ -78,6 +78,8 @@ details .body li{margin-bottom:4px;}
 .surv.dead{opacity:.55; border-color:var(--red); background:var(--panel);}
 .surv-head{display:flex; justify-content:space-between; align-items:center; gap:8px;}
 .surv-head .name{font-weight:800; font-size:1.05rem;}
+.surv-head .mv{padding:4px 8px; font-size:.7rem; line-height:1;}
+.surv-head .mv:disabled{opacity:.3; cursor:default;}
 .statrow{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
 .stat{flex:1; min-width:130px; background:var(--panel2); border-radius:8px; padding:8px;}
 .stat .lbl{font-size:.66rem; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); margin-bottom:4px;}
@@ -1000,6 +1002,17 @@ function pickInv(i,slot,val){
   persistSurv();
   if(val==='__custom'){ const el=document.getElementById('cust_'+key); if(el)el.focus(); }
 }
+function moveSurv(i,d){
+  const j=i+d; if(j<0||j>=survivors.length)return;
+  snap('Move '+survivors[i].name+(d<0?' up':' down'));
+  [survivors[i],survivors[j]]=[survivors[j],survivors[i]];
+  // things that point at survivors by position follow the swap
+  const sw=x=> x===i ? j : x===j ? i : x;
+  mission.taken.forEach(t=>{ t.si=sw(t.si); });
+  mission.who=sw(mission.who||0); save('mission',mission);
+  customSlot.clear(); persistSurv();
+  const card=document.querySelectorAll('#survList .surv')[j]; if(card) card.scrollIntoView({block:'nearest'});
+}
 function removeSurv(i){ if(confirm('Remove '+survivors[i].name+'?')){ snap('Remove '+survivors[i].name); survivors.splice(i,1); customSlot.clear(); persistSurv(); } }
 function resetAllActions(noSnap){ if(!noSnap) snap('Refresh actions'); survivors.forEach(s=>s.spent=0); persistSurv(); }
 /* Remember which panels are open per survivor, so re-rendering (XP, wounds, actions) doesn't collapse them */
@@ -1048,6 +1061,8 @@ function renderSurv(){
     div.innerHTML=
       '<div class="surv-head"><span class="name">'+(fig?'<span class="swatch"></span>':'')+esc(s.name)+'</span>'+
       '<span class="row"><span class="pill '+lvl.cls+'">'+lvl.name+'</span>'+
+      '<button class="btn sec mv" '+(i===0?'disabled ':'')+'onclick="moveSurv('+i+',-1)" title="Move up" aria-label="Move '+esc(s.name)+' up">&#9650;</button>'+
+      '<button class="btn sec mv" '+(i===survivors.length-1?'disabled ':'')+'onclick="moveSurv('+i+',1)" title="Move down" aria-label="Move '+esc(s.name)+' down">&#9660;</button>'+
       '<button class="btn sec" style="padding:4px 9px;font-size:.72rem;" onclick="removeSurv('+i+')">&#10005;</button></span></div>'+
       (dead?'<div class="deadband">&#9760; Eliminated &mdash; discard equipment</div>':'')+
       '<div class="statrow">'+
